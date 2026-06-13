@@ -1,0 +1,16 @@
+{
+	"appId": "com.dairybook.app",
+	"appName": "DairyBook",
+	"webDir": "dist",
+	"android": {
+		"allowMixedContent": true,
+		"backgroundColor": "#FFF8F0"
+	},
+	"plugins": {
+		"SplashScreen": {
+			"launchShowDuration": 2000,
+			"backgroundColor": "#1B5E20",
+			"showSpinner": false
+		}
+	}
+}

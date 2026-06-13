@@ -10,8 +10,10 @@ workflows:
         script: npm install
       - name: Build web app
         script: npm run build
+      - name: Install Capacitor CLI
+        script: npm install -g @capacitor/cli@latest
       - name: Capacitor sync
-        script: npx cap copy android
+        script: npx cap sync android
       - name: Build debug APK
         script: |
           cd android

@@ -89,13 +89,10 @@ lint/tmp/
 # Android Profiling
 *.hprof
 
-# Cordova plugins for Capacitor
-capacitor-cordova-android-plugins
-
-# Copied web assets
-app/src/main/assets/public
-
-# Generated Config files
-app/src/main/assets/capacitor.config.json
-app/src/main/assets/capacitor.plugins.json
-app/src/main/res/xml/config.xml
+# NOTE: the Capacitor-generated files below are intentionally COMMITTED so the
+# cloud build (Codemagic) has a complete Android project (cordova.variables.gradle
+# was missing before). CI also runs `npx cap sync android` to refresh them.
+#   capacitor-cordova-android-plugins
+#   app/src/main/assets/public
+#   app/src/main/assets/capacitor.config.json / capacitor.plugins.json
+#   app/src/main/res/xml/config.xml
