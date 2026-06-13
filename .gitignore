@@ -1,0 +1,20 @@
+# dependencies & build output
+node_modules/
+dist/
+
+# env files
+.env
+.env.local
+
+# Capacitor / Android build artifacts (keep the android/ project itself committed)
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/.idea/
+android/captures/
+
+# misc
+*.local
+*.log
+.DS_Store
