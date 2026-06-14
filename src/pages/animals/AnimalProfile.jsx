@@ -3,13 +3,15 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../../store/useStore.js'
 import { useToast } from '../../store/useToast.js'
 import { useT } from '../../i18n/useT.js'
-import { liters, num } from '../../lib/format.js'
-import { today } from '../../lib/date.js'
+import { liters, num, rupees } from '../../lib/format.js'
+import { today, shortDate } from '../../lib/date.js'
 import * as sel from '../../store/selectors.js'
 import PageHeader from '../../components/PageHeader.jsx'
 import AnimalAvatar from '../../components/AnimalAvatar.jsx'
-import { speciesLabel } from '../../lib/domain.js'
+import { speciesLabel, vaccineLabel, symptomLabel } from '../../lib/domain.js'
 import { STATUS, ageText } from './statusBadge.js'
+
+const BREED_LABEL = { heat: 'گرمی', mating: 'ملاپ', pregnancy: 'حمل', calving: 'پیدائش' }
 
 export default function AnimalProfile() {
   const { id } = useParams()
@@ -114,8 +116,33 @@ export default function AnimalProfile() {
         </div>
       )}
 
+      {/* full record */}
+      <div className="px-4 mt-4">
+        <h3 className="font-urdu text-lg font-bold mb-2">📋 مکمل ریکارڈ</h3>
+        <div className="space-y-3">
+          {(() => {
+            const breeding = sel.animalBreeding(s, id)
+            const meds = s.medicineLogs.filter((m) => m.animalId === id).slice().sort((x, y) => (x.date < y.date ? 1 : -1))
+            const health = sel.animalHealth(s, id)
+            const vacc = sel.animalVaccinations(s, id)
+            const txns = s.transactions.filter((tx) => tx.animalId === id).slice().sort((x, y) => (x.date < y.date ? 1 : -1))
+            const none = !breeding.length && !meds.length && !health.length && !vacc.length && !txns.length
+            return (
+              <>
+                {breeding.length > 0 && <RecCard title="🍼 افزائش نسل" rows={breeding.map((b) => [BREED_LABEL[b.type] || b.type, shortDate(b.date, lang)])} />}
+                {meds.length > 0 && <RecCard title="💊 دی گئی دوائیں" rows={meds.map((m) => [m.name + (m.dose ? ` · ${m.dose}` : ''), shortDate(m.date, lang)])} />}
+                {health.length > 0 && <RecCard title="🤒 بیماری / علاج" rows={health.map((h) => [h.diagnosis || (h.symptoms || []).map(symptomLabel).join('، ') || 'بیماری', shortDate(h.date, lang)])} />}
+                {vacc.length > 0 && <RecCard title="💉 ٹیکے" rows={vacc.map((v) => [vaccineLabel(v.vaccine, lang), v.nextDue ? `اگلا: ${shortDate(v.nextDue, lang)}` : shortDate(v.givenDate, lang)])} />}
+                {txns.length > 0 && <RecCard title="🛒 خرید و فروخت" rows={txns.map((t) => [t.type === 'buy' ? 'خریدا' : 'فروخت', rupees(t.price)])} />}
+                {none && <div className="gs-card p-3 font-urdu text-muted text-center">ابھی اس جانور کا کوئی اضافی ریکارڈ نہیں</div>}
+              </>
+            )
+          })()}
+        </div>
+      </div>
+
       {/* family tree */}
-      <div className="px-4 mt-3">
+      <div className="px-4 mt-4">
         <h3 className="font-urdu text-lg font-bold mb-2">🌳 شجرہ نسب</h3>
         <div className="gs-card p-4">
           <FamilyTree a={a} s={s} nav={nav} onPick={setPicking} />
@@ -217,6 +244,22 @@ function FamilyTree({ a, s, nav, onPick }) {
         </div>
       )}
       <button onClick={() => onPick('child')} className="gs-btn bg-white text-primary border-2 border-primary/20 text-base px-4" style={{ minHeight: 44 }}>➕ بچہ جوڑیں</button>
+    </div>
+  )
+}
+
+function RecCard({ title, rows }) {
+  return (
+    <div className="gs-card overflow-hidden">
+      <div className="bg-cream px-3 py-2 font-urdu text-base font-bold">{title}</div>
+      <div className="divide-y divide-black/5">
+        {rows.map(([left, right], i) => (
+          <div key={i} className="flex items-center justify-between gap-2 px-3 py-2">
+            <span className="font-urdu text-base text-ink flex-1 min-w-0 truncate">{left}</span>
+            <span className="num text-sm text-muted shrink-0">{right}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

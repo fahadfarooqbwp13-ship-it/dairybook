@@ -4,6 +4,7 @@ import { useToast } from '../../store/useToast.js'
 import { useT } from '../../i18n/useT.js'
 import { today } from '../../lib/date.js'
 import { getClientId, setClientId, isConfigured, hasToken, uploadBackup, downloadBackup } from '../../lib/googleDrive.js'
+import { shareFile } from '../../lib/share.js'
 import PageHeader from '../../components/PageHeader.jsx'
 
 const DATA_KEYS = [
@@ -79,19 +80,22 @@ export default function Backup() {
       : hoursAgo > 12 ? { color: 'bg-warn', icon: '🟡', text: `${hoursAgo} گھنٹے پہلے` }
       : { color: 'bg-ok', icon: '✅', text: `${t('backup_done')} — ${hoursAgo === 0 ? 'ابھی' : hoursAgo + ' گھنٹے پہلے'}` }
 
-  function exportFile() {
+  async function exportFile() {
+    const seq = (parseInt(localStorage.getItem('dairybook-backup-seq') || '0', 10) || 0) + 1
     const payload = buildPayload()
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `dairybook-backup-${today()}.json`
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
+    const res = await shareFile(blob, `DairyBook-backup-${seq}.json`, 'application/json', {
+      title: 'DairyBook بیک اپ',
+      text: `DairyBook بیک اپ #${seq}`,
+    })
+    localStorage.setItem('dairybook-backup-seq', String(seq))
     setLastBackup(new Date().toISOString())
-    show(t('saved_ok'), false)
+    show(
+      res === 'downloaded'
+        ? `بیک اپ #${seq} محفوظ ہو گیا`
+        : `بیک اپ #${seq} تیار — گوگل ڈرائیو منتخب کر کے اپ لوڈ کریں`,
+      false,
+    )
   }
 
   function onFile(e) {
@@ -129,13 +133,15 @@ export default function Backup() {
       </div>
 
       {/* actions */}
-      <div className="px-4 mt-4 space-y-3">
-        <button onClick={exportFile} className="gs-btn bg-primary text-white w-full">💾 {t('backup_export')}</button>
-
+      <div className="px-4 mt-4 space-y-2">
+        <button onClick={exportFile} className="gs-btn bg-primary text-white w-full">💾 بیک اپ بنائیں اور گوگل ڈرائیو میں رکھیں</button>
         <label className="gs-btn bg-white text-primary border-2 border-primary/20 w-full cursor-pointer">
-          📥 {t('backup_restore')}
+          📥 گوگل ڈرائیو سے واپس لائیں
           <input ref={fileRef} type="file" accept="application/json,.json" onChange={onFile} className="hidden" />
         </label>
+        <div className="font-urdu text-xs text-muted text-center leading-relaxed">
+          بیک اپ پر «گوگل ڈرائیو» منتخب کریں۔ واپسی پر فائل منتخب کرنے کے لیے گوگل ڈرائیو کھولیں۔
+        </div>
         {err && <div className="font-urdu text-danger text-center">{err}</div>}
       </div>
 

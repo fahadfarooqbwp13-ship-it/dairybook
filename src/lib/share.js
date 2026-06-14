@@ -38,11 +38,13 @@ export function downloadBlob(blob, filename) {
   }, 2000)
 }
 
+// Generic: share any file (image, JSON backup, …) via the native/Web share
+// sheet so the user can pick WhatsApp, Google Drive, etc.
 // Returns 'shared' | 'cancelled' | 'downloaded'
-export async function shareImage(blob, filename, { title, text } = {}) {
-  const safeName = (filename || 'dairybook.png').replace(/[^a-zA-Z0-9._-]/g, '_')
+export async function shareFile(blob, filename, mime = 'application/octet-stream', { title, text } = {}) {
+  const safeName = (filename || 'dairybook').replace(/[^a-zA-Z0-9._-]/g, '_')
 
-  // --- Native Capacitor app: write file, then native share (WhatsApp works) ---
+  // --- Native Capacitor app: write file, then native share sheet ---
   if (isNative()) {
     try {
       const base64 = await blobToBase64(blob)
@@ -51,15 +53,14 @@ export async function shareImage(blob, filename, { title, text } = {}) {
       await Share.share({ title: title || 'DairyBook', text: text || '', files: [uri] })
       return 'shared'
     } catch (e) {
-      const msg = (e && e.message) || ''
-      if (/cancel/i.test(msg)) return 'cancelled'
+      if (/cancel/i.test((e && e.message) || '')) return 'cancelled'
       // fall through to web/download
     }
   }
 
   // --- Browser PWA: Web Share API with files (files-only first for reliability) ---
   try {
-    const file = new File([blob], safeName, { type: 'image/png' })
+    const file = new File([blob], safeName, { type: mime })
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({ files: [file] })
@@ -80,4 +81,9 @@ export async function shareImage(blob, filename, { title, text } = {}) {
 
   downloadBlob(blob, filename || safeName)
   return 'downloaded'
+}
+
+// Image convenience wrapper (bills, reports, summaries).
+export function shareImage(blob, filename, opts = {}) {
+  return shareFile(blob, filename || 'dairybook.png', 'image/png', opts)
 }

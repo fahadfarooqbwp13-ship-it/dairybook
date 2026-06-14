@@ -45,6 +45,21 @@ export default function More() {
     }
   }
 
+  async function doResetDemo() {
+    const ok = await confirm({
+      title: lang === 'ur' ? 'ڈیمو ڈیٹا لوڈ کریں؟' : 'Load demo data?',
+      message: lang === 'ur'
+        ? 'آپ کا موجودہ سارا ڈیٹا ہٹ کر نمونہ (ڈیمو) ڈیٹا آ جائے گا۔ پہلے بیک اپ لے لیں!'
+        : 'Your current data will be replaced with sample demo data. Back up first!',
+      confirmLabel: lang === 'ur' ? 'ڈیمو لوڈ کریں' : 'Load demo',
+      danger: true,
+    })
+    if (ok) {
+      resetDemo()
+      show(lang === 'ur' ? 'ڈیمو ڈیٹا دوبارہ لوڈ ہو گیا' : 'Demo data reloaded')
+    }
+  }
+
   async function doClearAnimals() {
     const ok = await confirm({
       title: lang === 'ur' ? 'صرف جانور صاف کریں؟' : 'Clear animals only?',
@@ -104,13 +119,7 @@ export default function More() {
             <span className="text-2xl text-muted">›</span>
           </span>
         </button>
-        <button
-          onClick={() => {
-            resetDemo()
-            show(lang === 'ur' ? 'ڈیمو ڈیٹا دوبارہ لوڈ ہو گیا' : 'Demo data reloaded')
-          }}
-          className="gs-card w-full p-4 flex items-center justify-between active:scale-[0.99]"
-        >
+        <button onClick={doResetDemo} className="gs-card w-full p-4 flex items-center justify-between active:scale-[0.99]">
           <span className="font-urdu text-lg">🔄 ڈیمو ڈیٹا ری سیٹ کریں</span>
         </button>
       </div>

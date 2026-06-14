@@ -16,9 +16,9 @@ body {
   margin: 0;
   background: #fff8f0; /* cream — easy on the eyes in sunlight */
   color: #1a1a1a;
-  /* Nunito first so Latin/English uses it; Arabic glyphs fall through to
-     Nastaliq automatically (Nunito has no Arabic). Keeps Urdu in Nastaliq. */
-  font-family: 'Nunito', 'Noto Nastaliq Urdu', system-ui, sans-serif;
+  /* Inter first (clean, low-strain) for Latin/English; Arabic glyphs fall
+     through to Nastaliq automatically (Inter has no Arabic). */
+  font-family: 'Inter', 'Noto Nastaliq Urdu', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
@@ -27,6 +27,16 @@ body {
 /* Nastaliq needs extra vertical room (master prompt: line-height 1.8x) */
 .font-urdu {
   line-height: 1.9;
+}
+
+/* In English, Nastaliq's tall line-height looks wrong — tighten it and let
+   Inter render crisply. */
+html[lang='en'] .font-urdu {
+  line-height: 1.45;
+}
+html[lang='en'] body,
+html[lang='en'] {
+  letter-spacing: 0.1px;
 }
 
 /* Numbers: fixed-width so rupees/liters align in tables */
