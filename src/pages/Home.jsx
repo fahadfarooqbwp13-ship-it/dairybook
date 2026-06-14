@@ -7,18 +7,6 @@ import { loadCached, advisories } from '../lib/weather.js'
 import * as sel from '../store/selectors.js'
 import StatTile from '../components/StatTile.jsx'
 
-const MENU = [
-  { key: 'm_milk', icon: '🥛', to: '/milk', color: '#0277BD' },
-  { key: 'm_buyers', icon: '💰', to: '/buyers', color: '#F9A825' },
-  { key: 'm_reports', icon: '📊', to: '/reports', color: '#4527A0' },
-  { key: 'm_animals', icon: '🐄', to: '/animals', color: '#1B5E20' },
-  { key: 'm_health', icon: '💊', to: '/health', color: '#B71C1C' },
-  { key: 'm_calendar', icon: '📅', to: '/calendar', color: '#4527A0' },
-  { key: 'm_breeding', icon: '🍼', to: '/breeding', color: '#AD1457' },
-  { key: 'm_trade', icon: '🛒', to: '/trade', color: '#7B1F1F' },
-  { key: 'm_backup', icon: '☁️', to: '/backup', color: '#0277BD' },
-]
-
 const QUICK = [
   { key: 'qa_milk', icon: '🥛', to: '/milk/log', color: 'bg-sky' },
   { key: 'qa_sale', icon: '💰', to: '/buyers/distribute', color: 'bg-gold' },
@@ -46,7 +34,7 @@ export default function Home() {
   return (
     <div className="pb-6">
       {/* weather / date header */}
-      <header className="bg-primary text-white px-4 pt-4 pb-5 rounded-b-3xl shadow-md">
+      <header className="bg-primary text-white px-4 pb-5 rounded-b-3xl shadow-md" style={{ paddingTop: 'calc(1rem + env(safe-area-inset-top))' }}>
         <div className="flex items-start justify-between">
           <div>
             <div className="font-urdu text-xl">{t('appName')}</div>
@@ -81,9 +69,9 @@ export default function Home() {
       <section className="px-4 -mt-3">
         <div className="grid grid-cols-2 gap-3">
           <StatTile icon="🥛" value={liters(milkToday)} label={t('home_todayMilk')} accent="#0277BD" to="/milk" />
-          <StatTile icon="💰" value={rupees(income)} label={t('home_todayIncome')} accent="#F9A825" to="/buyers" />
+          <StatTile icon="💰" value={rupees(income)} label={t('home_todayIncome')} accent="#F9A825" to="/money" />
           <StatTile icon="🐄" value={num(s.animals.length)} label={t('home_totalAnimals')} accent="#1B5E20" to="/animals" />
-          <StatTile icon="⚠️" value={num(tasks)} label={t('home_todayTasks')} accent="#E65100" to="/buyers" />
+          <StatTile icon="⚠️" value={num(tasks)} label={t('home_todayTasks')} accent="#E65100" to="/calendar" />
         </div>
       </section>
 
@@ -139,26 +127,12 @@ export default function Home() {
         </div>
       </section>
 
-      {/* main menu grid */}
+      {/* everything else lives under the ⚙️ مزید tab in the bottom bar */}
       <section className="px-4 mt-5">
-        <h2 className="font-urdu text-xl font-bold text-ink mb-2">📂 {t('home_menu')}</h2>
-        <div className="grid grid-cols-3 gap-3">
-          {MENU.map((m) => (
-            <button
-              key={m.key}
-              onClick={() => nav(m.to)}
-              className="gs-card p-3 flex flex-col items-center gap-2 active:scale-95 transition-transform"
-            >
-              <span
-                className="rounded-2xl flex items-center justify-center"
-                style={{ width: 52, height: 52, background: m.color + '1A' }}
-              >
-                <span style={{ fontSize: 30 }}>{m.icon}</span>
-              </span>
-              <span className="font-urdu text-base text-ink leading-tight text-center">{t(m.key)}</span>
-            </button>
-          ))}
-        </div>
+        <button onClick={() => nav('/animals')} className="gs-card w-full p-4 flex items-center justify-between active:scale-[0.99]">
+          <span className="font-urdu text-lg font-bold">🐄 سارے جانور دیکھیں</span>
+          <span className="text-2xl text-muted">›</span>
+        </button>
       </section>
     </div>
   )

@@ -7,15 +7,18 @@ import { addDays, today } from '../../lib/date.js'
 import { fileToCompressedDataURL } from '../../lib/image.js'
 import { SPECIES, speciesInfo } from '../../lib/domain.js'
 import PageHeader from '../../components/PageHeader.jsx'
+import VoiceButton from '../../components/VoiceButton.jsx'
+import AnimalAvatar from '../../components/AnimalAvatar.jsx'
 
 const BREEDS = ['ساہیوال', 'نیلی راوی', 'چولستانی', 'کنڈی', 'فریزین کراس', 'دیسی']
 
 export default function AnimalEdit() {
   const { id } = useParams()
   const nav = useNavigate()
-  const { t } = useT()
+  const { t, lang } = useT()
   const addAnimal = useStore((s) => s.addAnimal)
   const updateAnimal = useStore((s) => s.updateAnimal)
+  const animals = useStore((s) => s.animals)
   const existing = useStore((s) => (id ? s.animals.find((a) => a.id === id) : null))
   const show = useToast((s) => s.show)
   const isEdit = !!existing
@@ -35,7 +38,13 @@ export default function AnimalEdit() {
     ageYears: ageInit,
     photo: existing?.photo || '',
     speciesName: existing?.speciesName || '',
+    motherId: existing?.motherId || '',
+    fatherId: existing?.fatherId || '',
   })
+
+  const others = animals.filter((a) => a.id !== id)
+  const femaleParents = others.filter((a) => a.sex === 'f')
+  const maleParents = others.filter((a) => a.sex === 'm')
   const set = (k) => (v) => setF((p) => ({ ...p, [k]: v }))
 
   async function onPhoto(e) {
@@ -64,6 +73,8 @@ export default function AnimalEdit() {
       status: f.status,
       weight: +f.weight || 0,
       photo: f.photo,
+      motherId: f.motherId,
+      fatherId: f.fatherId,
       dob: f.ageYears !== '' ? addDays(today(), -Math.round(+f.ageYears * 365)) : existing?.dob || '',
     }
     if (isEdit) {
@@ -117,7 +128,10 @@ export default function AnimalEdit() {
         </Field>
 
         <Field label={t('animals_name')}>
-          <input value={f.name} onChange={(e) => set('name')(e.target.value)} className="gs-input font-urdu" placeholder="مثلاً ہیرا" />
+          <div className="flex gap-2">
+            <input value={f.name} onChange={(e) => set('name')(e.target.value)} className="gs-input font-urdu flex-1" placeholder="مثلاً ہیرا" />
+            <VoiceButton onResult={(txt) => set('name')(txt)} lang={lang} />
+          </div>
         </Field>
 
         <Field label="قسم (جانور)">
@@ -194,10 +208,49 @@ export default function AnimalEdit() {
           />
         </Field>
 
+        {/* parents (family tree) */}
+        <div>
+          <span className="font-urdu text-lg text-muted block mb-1">🌳 ماں (اختیاری)</span>
+          <ParentRow candidates={femaleParents} value={f.motherId} onChange={set('motherId')} />
+        </div>
+        <div>
+          <span className="font-urdu text-lg text-muted block mb-1">🌳 باپ (اختیاری)</span>
+          <ParentRow candidates={maleParents} value={f.fatherId} onChange={set('fatherId')} />
+        </div>
+
         <button onClick={save} className="gs-btn bg-ok text-white text-2xl mt-2">
           ✅ {t('save')}
         </button>
       </div>
+    </div>
+  )
+}
+
+function ParentRow({ candidates, value, onChange }) {
+  if (candidates.length === 0) return <div className="font-urdu text-sm text-muted">کوئی دستیاب نہیں</div>
+  return (
+    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+      <button
+        type="button"
+        onClick={() => onChange('')}
+        className={`shrink-0 flex flex-col items-center justify-center gap-1 rounded-2xl ${!value ? 'bg-primary/10 ring-2 ring-primary' : 'bg-white'}`}
+        style={{ width: 64, height: 68 }}
+      >
+        <span style={{ fontSize: 22 }} className="opacity-60">❔</span>
+        <span className="font-urdu text-xs">نامعلوم</span>
+      </button>
+      {candidates.map((a) => (
+        <button
+          key={a.id}
+          type="button"
+          onClick={() => onChange(a.id)}
+          className={`shrink-0 flex flex-col items-center gap-1 p-1 rounded-2xl ${value === a.id ? 'bg-primary/10 ring-2 ring-primary' : ''}`}
+          style={{ width: 64 }}
+        >
+          <AnimalAvatar animal={a} size={46} showTag={false} />
+          <span className="num text-xs font-bold">{a.tag}</span>
+        </button>
+      ))}
     </div>
   )
 }

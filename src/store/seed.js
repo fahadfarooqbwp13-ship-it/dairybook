@@ -302,6 +302,7 @@ export function buildSeed() {
     transactions,
     customAlerts: [],
     recycleBin: [],
+    onboarded: true,
     lastBackupAt: addDays(t, 0) + 'T06:42:00',
   }
 }
@@ -328,6 +329,7 @@ export function emptyFarm() {
     transactions: [],
     customAlerts: [],
     recycleBin: [],
+    onboarded: false,
     lastBackupAt: null,
   }
 }

@@ -7,6 +7,7 @@ import { today } from '../../lib/date.js'
 import * as sel from '../../store/selectors.js'
 import PageHeader from '../../components/PageHeader.jsx'
 import AnimalAvatar from '../../components/AnimalAvatar.jsx'
+import VoiceButton from '../../components/VoiceButton.jsx'
 import { STATUS } from './statusBadge.js'
 
 const FILTERS = [
@@ -22,15 +23,19 @@ export default function AnimalList() {
   const { t, lang } = useT()
   const s = useStore()
   const [filter, setFilter] = useState('all')
+  const [q, setQ] = useState('')
 
   const females = s.animals.filter((a) => a.sex === 'f').length
   const males = s.animals.length - females
   const pregnant = s.animals.filter((a) => a.status === 'pregnant').length
+  const query = q.trim().toLowerCase()
 
   const list = s.animals.filter((a) => {
-    if (filter === 'all') return true
-    if (filter === 'cow' || filter === 'buffalo') return a.species === filter
-    return a.sex === filter
+    const matchFilter =
+      filter === 'all' ? true : filter === 'cow' || filter === 'buffalo' ? a.species === filter : a.sex === filter
+    const matchQuery =
+      !query || String(a.tag).toLowerCase().includes(query) || (a.name || '').toLowerCase().includes(query)
+    return matchFilter && matchQuery
   })
 
   return (
@@ -60,6 +65,14 @@ export default function AnimalList() {
         </div>
       </div>
 
+      {/* search */}
+      {s.animals.length > 0 && (
+        <div className="px-4 mt-3 flex gap-2">
+          <input value={q} onChange={(e) => setQ(e.target.value)} className="gs-input font-urdu flex-1" placeholder="🔍 ٹیگ یا نام سے تلاش کریں" />
+          <VoiceButton onResult={setQ} lang={lang} />
+        </div>
+      )}
+
       {/* filter chips */}
       <div className="px-4 mt-3 flex gap-2 overflow-x-auto no-scrollbar">
         {FILTERS.map((f) => (
@@ -76,7 +89,19 @@ export default function AnimalList() {
         ))}
       </div>
 
-      {/* photo grid */}
+      {/* photo grid (with guided empty states) */}
+      {s.animals.length === 0 ? (
+        <div className="px-6 mt-10 text-center">
+          <div className="rounded-full bg-primary/10 mx-auto flex items-center justify-center" style={{ width: 100, height: 100 }}>
+            <span style={{ fontSize: 52 }}>🐄</span>
+          </div>
+          <div className="font-urdu text-xl font-bold mt-3">ابھی کوئی جانور نہیں</div>
+          <div className="font-urdu text-base text-muted mt-1 leading-relaxed">اپنا پہلا جانور شامل کریں — تصویر، ٹیگ نمبر اور بس!</div>
+          <button onClick={() => nav('/animals/new')} className="gs-btn bg-primary text-white mt-4 px-6 mx-auto">➕ پہلا جانور شامل کریں</button>
+        </div>
+      ) : list.length === 0 ? (
+        <div className="px-4 mt-10 text-center font-urdu text-lg text-muted">کوئی نتیجہ نہیں ملا</div>
+      ) : (
       <div className="px-4 mt-3 grid grid-cols-2 gap-3">
         {list.map((a) => {
           const st = STATUS[a.status] || STATUS.active
@@ -102,6 +127,7 @@ export default function AnimalList() {
           )
         })}
       </div>
+      )}
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../../store/useStore.js'
 import { useToast } from '../../store/useToast.js'
@@ -16,13 +17,23 @@ export default function AnimalProfile() {
   const { t, lang } = useT()
   const s = useStore()
   const softDelete = useStore((st) => st.softDelete)
+  const updateAnimal = useStore((st) => st.updateAnimal)
   const show = useToast((st) => st.show)
   const a = s.animals.find((x) => x.id === id)
+  const [picking, setPicking] = useState(null) // 'mother' | 'father' | 'child'
 
   function onDelete() {
     softDelete('animals', id)
     show(lang === 'ur' ? 'ردی کی ٹوکری میں چلا گیا 🗑️' : 'Moved to recycle bin 🗑️', true)
     nav('/animals')
+  }
+
+  function applyPick(pickedId) {
+    if (picking === 'mother') updateAnimal(a.id, { motherId: pickedId })
+    else if (picking === 'father') updateAnimal(a.id, { fatherId: pickedId })
+    else if (picking === 'child') updateAnimal(pickedId, a.sex === 'm' ? { fatherId: a.id } : { motherId: a.id })
+    setPicking(null)
+    show('شجرہ اپ ڈیٹ ہو گیا ✅', true)
   }
 
   if (!a) {
@@ -107,7 +118,7 @@ export default function AnimalProfile() {
       <div className="px-4 mt-3">
         <h3 className="font-urdu text-lg font-bold mb-2">🌳 شجرہ نسب</h3>
         <div className="gs-card p-4">
-          <FamilyTree a={a} s={s} nav={nav} />
+          <FamilyTree a={a} s={s} nav={nav} onPick={setPicking} />
         </div>
       </div>
 
@@ -116,20 +127,64 @@ export default function AnimalProfile() {
         <button onClick={() => nav(`/animals/${a.id}/edit`)} className="gs-btn bg-white text-primary border-2 border-primary/20">✏️ {t('edit')}</button>
         <button onClick={onDelete} className="gs-btn bg-white text-danger border-2 border-danger/30">🗑️ {lang === 'ur' ? 'حذف کریں' : 'Delete'}</button>
       </div>
+
+      {/* family member picker */}
+      {picking && (
+        <PickerSheet
+          title={picking === 'mother' ? 'ماں منتخب کریں' : picking === 'father' ? 'باپ منتخب کریں' : 'بچہ منتخب کریں'}
+          candidates={
+            picking === 'mother'
+              ? s.animals.filter((x) => x.sex === 'f' && x.id !== a.id)
+              : picking === 'father'
+                ? s.animals.filter((x) => x.sex === 'm' && x.id !== a.id)
+                : s.animals.filter((x) => x.id !== a.id && x.id !== a.motherId && x.id !== a.fatherId)
+          }
+          onPick={applyPick}
+          onClose={() => setPicking(null)}
+          addNew={picking === 'child' ? () => { setPicking(null); nav('/animals/new') } : null}
+        />
+      )}
     </div>
   )
 }
 
-function TreeBox({ animal, nav, label, self }) {
+function PickerSheet({ title, candidates, onPick, onClose, addNew }) {
+  return (
+    <div className="absolute inset-0 z-50 bg-black/50 flex items-end" onClick={onClose}>
+      <div className="bg-surface rounded-t-3xl w-full max-h-[80%] overflow-y-auto p-4" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }} onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between mb-3">
+          <div className="font-urdu text-xl font-bold">{title}</div>
+          <button onClick={onClose} className="gs-touch text-3xl text-muted flex items-center justify-center" style={{ width: 40, height: 40 }}>×</button>
+        </div>
+        {candidates.length === 0 ? (
+          <div className="font-urdu text-muted py-4 text-center">کوئی جانور دستیاب نہیں</div>
+        ) : (
+          <div className="grid grid-cols-3 gap-3">
+            {candidates.map((c) => (
+              <button key={c.id} onClick={() => onPick(c.id)} className="gs-card p-2 flex flex-col items-center gap-1 active:scale-95">
+                <AnimalAvatar animal={c} size={52} />
+                <span className="font-urdu text-sm font-bold truncate w-full text-center">{c.name || 'نمبر ' + c.tag}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {addNew && (
+          <button onClick={addNew} className="gs-btn bg-primary text-white w-full mt-3">➕ نیا بچہ شامل کریں</button>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function TreeBox({ animal, nav, label, self, onAdd }) {
   if (!animal) {
     return (
-      <div className="flex flex-col items-center gap-1" style={{ width: 80 }}>
-        <div className="rounded-full bg-black/10 flex items-center justify-center" style={{ width: 52, height: 52 }}>
-          <span style={{ fontSize: 22 }} className="opacity-60">❔</span>
+      <button type="button" onClick={onAdd} className="flex flex-col items-center gap-1 active:scale-95" style={{ width: 80 }}>
+        <div className="rounded-full bg-primary/5 border-2 border-dashed border-primary/40 flex items-center justify-center" style={{ width: 52, height: 52 }}>
+          <span style={{ fontSize: 24 }} className="text-primary">＋</span>
         </div>
-        <span className="font-urdu text-xs text-muted">نامعلوم</span>
-        {label && <span className="font-urdu text-[11px] text-muted">{label}</span>}
-      </div>
+        <span className="font-urdu text-xs text-primary font-bold">{label} چنیں</span>
+      </button>
     )
   }
   return (
@@ -138,33 +193,30 @@ function TreeBox({ animal, nav, label, self }) {
         <AnimalAvatar animal={animal} size={52} showTag={false} />
       </div>
       <span className="font-urdu text-xs font-bold text-ink truncate w-full text-center">{animal.name || 'نمبر ' + animal.tag}</span>
-      {label && <span className="font-urdu text-[11px] text-muted">{label}</span>}
+      {label && <span className="font-urdu text-xs text-muted">{label}</span>}
     </button>
   )
 }
 
-function FamilyTree({ a, s, nav }) {
+function FamilyTree({ a, s, nav, onPick }) {
   const mother = a.motherId ? sel.findAnimal(s, a.motherId) : null
   const father = a.fatherId ? sel.findAnimal(s, a.fatherId) : null
   const children = s.animals.filter((x) => x.motherId === a.id || x.fatherId === a.id)
   return (
     <div className="flex flex-col items-center">
       <div className="flex gap-8 justify-center">
-        <TreeBox animal={father} nav={nav} label="باپ" />
-        <TreeBox animal={mother} nav={nav} label="ماں" />
+        <TreeBox animal={father} nav={nav} label="باپ" onAdd={() => onPick('father')} />
+        <TreeBox animal={mother} nav={nav} label="ماں" onAdd={() => onPick('mother')} />
       </div>
       <div className="text-2xl text-muted leading-none my-1">↓</div>
       <TreeBox animal={a} nav={nav} label="یہ جانور" self />
-      {children.length > 0 ? (
-        <>
-          <div className="text-2xl text-muted leading-none my-1">↓</div>
-          <div className="flex gap-4 flex-wrap justify-center">
-            {children.map((c) => <TreeBox key={c.id} animal={c} nav={nav} label="بچہ" />)}
-          </div>
-        </>
-      ) : (
-        <div className="font-urdu text-sm text-muted mt-2">ابھی کوئی بچہ نہیں</div>
+      <div className="text-2xl text-muted leading-none my-1">↓</div>
+      {children.length > 0 && (
+        <div className="flex gap-4 flex-wrap justify-center mb-3">
+          {children.map((c) => <TreeBox key={c.id} animal={c} nav={nav} label="بچہ" />)}
+        </div>
       )}
+      <button onClick={() => onPick('child')} className="gs-btn bg-white text-primary border-2 border-primary/20 text-base px-4" style={{ minHeight: 44 }}>➕ بچہ جوڑیں</button>
     </div>
   )
 }

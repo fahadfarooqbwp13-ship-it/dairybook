@@ -8,6 +8,7 @@ import * as sel from '../../store/selectors.js'
 import { animalName } from '../../store/selectors.js'
 import PageHeader from '../../components/PageHeader.jsx'
 import EditBtn from '../../components/EditBtn.jsx'
+import AnimalPicker from '../../components/AnimalPicker.jsx'
 
 export default function Trade() {
   const { t, lang } = useT()
@@ -107,9 +108,8 @@ function SellForm({ s, addSale, show, t, onDone }) {
   return (
     <div className="px-4 mt-3">
       <div className="gs-card p-3 space-y-2">
-        <select className="gs-input font-urdu" value={animalId} onChange={(e) => setAnimalId(e.target.value)}>
-          {sellable.map((a) => <option key={a.id} value={a.id}>{animalName(a)} ({a.breed})</option>)}
-        </select>
+        <div className="font-urdu text-sm text-muted">کون سا جانور بیچنا ہے؟</div>
+        <AnimalPicker animals={sellable} value={animalId} onChange={setAnimalId} />
         <div className="grid grid-cols-2 gap-2">
           <input className="gs-input num" inputMode="numeric" placeholder="فروخت قیمت ₨" value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} />
           <input className="gs-input font-urdu" placeholder="خریدار" value={f.counterparty} onChange={(e) => setF({ ...f, counterparty: e.target.value })} />

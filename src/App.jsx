@@ -27,9 +27,13 @@ import Trade from './pages/trade/Trade.jsx'
 import Backup from './pages/backup/Backup.jsx'
 import RecycleBin from './pages/RecycleBin.jsx'
 import DayRecord from './pages/DayRecord.jsx'
+import MoneyHub from './pages/MoneyHub.jsx'
+import Profit from './pages/Profit.jsx'
+import Onboarding from './pages/Onboarding.jsx'
 
 export default function App() {
   const { dir, lang } = useT()
+  const onboarded = useStore((s) => s.onboarded)
   // keep <html dir/lang> in sync with the language toggle
   useEffect(() => {
     document.documentElement.dir = dir
@@ -51,6 +55,8 @@ export default function App() {
     }
   }, [])
 
+  if (!onboarded) return <Onboarding />
+
   return (
     <Routes>
       <Route element={<Layout />}>
@@ -70,6 +76,8 @@ export default function App() {
         <Route path="/buyers/:id/bill/:ym" element={<BillPreview />} />
         <Route path="/buyers/:id" element={<BuyerLedger />} />
 
+        <Route path="/money" element={<MoneyHub />} />
+        <Route path="/profit" element={<Profit />} />
         <Route path="/expenses" element={<Expenses />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/breeding" element={<Breeding />} />

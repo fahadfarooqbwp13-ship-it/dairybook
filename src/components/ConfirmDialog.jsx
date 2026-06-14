@@ -15,7 +15,8 @@ export default function ConfirmDialog() {
   return (
     <div className="absolute inset-0 z-50 bg-black/50 flex items-end" onClick={() => _resolve(false)}>
       <div
-        className="bg-surface rounded-t-3xl w-full p-5 pb-7"
+        className="bg-surface rounded-t-3xl w-full p-5"
+        style={{ paddingBottom: 'calc(1.75rem + env(safe-area-inset-bottom))' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="font-urdu text-2xl font-bold text-ink mb-2">{dialog.title}</div>

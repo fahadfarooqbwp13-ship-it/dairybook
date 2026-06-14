@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useT } from '../../i18n/useT.js'
 import { weekdayShort } from '../../lib/date.js'
-import { fetchWeather, loadCached, wmo, advisories, forwardGeocode, FAISALABAD } from '../../lib/weather.js'
+import { fetchWeather, loadCached, wmo, advisories, forwardGeocode, findCity, CITIES, FAISALABAD } from '../../lib/weather.js'
 import PageHeader from '../../components/PageHeader.jsx'
 
 export default function Weather() {
@@ -11,6 +11,7 @@ export default function Weather() {
   const [offline, setOffline] = useState(false)
   const [city, setCity] = useState('')
   const [err, setErr] = useState('')
+  const [showCities, setShowCities] = useState(false)
 
   async function load(loc) {
     setLoading(true)
@@ -19,41 +20,48 @@ export default function Weather() {
     try {
       const d = await fetchWeather(loc)
       setData(d)
+      setShowCities(false)
     } catch {
-      setOffline(true) // keep showing cached
+      setOffline(true) // keep showing cached if any
     } finally {
       setLoading(false)
     }
   }
 
-  function detect() {
+  // On open: show real weather right away (last city, else Faisalabad). No GPS
+  // prompt on mount — it hangs/denies in the wrapped app and looks broken.
+  useEffect(() => {
+    const stale = !data || Date.now() - data.fetchedAt > 3 * 3600 * 1000
+    if (stale) load(data ? { lat: data.lat, lon: data.lon, place: data.place } : FAISALABAD)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  function useGps() {
     setErr('')
-    if (!navigator.geolocation) return load(FAISALABAD)
+    if (!navigator.geolocation) return setErr('اس فون پر GPS دستیاب نہیں — شہر منتخب کریں')
     setLoading(true)
     navigator.geolocation.getCurrentPosition(
       (pos) => load({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-      () => load(data ? { lat: data.lat, lon: data.lon, place: data.place } : FAISALABAD),
+      () => { setLoading(false); setErr('مقام نہیں ملا — نیچے سے شہر منتخب کریں') },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     )
   }
 
-  // on first open: detect location + load weather (refresh if cache is stale)
-  useEffect(() => {
-    const stale = !data || Date.now() - data.fetchedAt > 3 * 3600 * 1000
-    if (stale) detect()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
   async function applyManual() {
     if (!city.trim()) return
-    setLoading(true)
     setErr('')
+    const local = findCity(city) // resolves Urdu names from our city list
+    if (local) {
+      setCity('')
+      return load(local)
+    }
+    setLoading(true)
     try {
       const loc = await forwardGeocode(city.trim())
-      await load(loc)
       setCity('')
+      await load(loc)
     } catch {
-      setErr('یہ شہر نہیں ملا — دوبارہ کوشش کریں')
+      setErr('یہ شہر نہیں ملا — نیچے فہرست سے منتخب کریں')
       setLoading(false)
     }
   }
@@ -66,7 +74,7 @@ export default function Weather() {
       <PageHeader title="موسم" color="bg-sky" />
 
       {!data && loading && (
-        <div className="px-4 mt-10 text-center font-urdu text-lg text-muted">📍 مقام تلاش ہو رہا ہے…</div>
+        <div className="px-4 mt-10 text-center font-urdu text-lg text-muted">🌤️ موسم لوڈ ہو رہا ہے…</div>
       )}
 
       {data && (
@@ -84,26 +92,9 @@ export default function Weather() {
             </div>
           </div>
 
-          {/* status + re-detect */}
-          <div className="px-4 mt-2 flex items-center justify-between">
-            <span className="font-urdu text-sm text-muted">
-              {offline ? '📴 آف لائن — آخری محفوظ موسم' : `آخری اپ ڈیٹ: ${hoursAgo === 0 ? 'ابھی' : hoursAgo + ' گھنٹے پہلے'}`}
-            </span>
-            <button onClick={detect} disabled={loading} className="font-urdu text-sm text-sky font-bold disabled:opacity-50">
-              📍 {loading ? 'تلاش…' : 'مقام دوبارہ'}
-            </button>
-          </div>
-
-          {/* manual location override */}
-          <div className="px-4 mt-2">
-            <div className="gs-card p-3">
-              <div className="font-urdu text-sm text-muted mb-1">مقام غلط ہے؟ شہر کا نام لکھیں</div>
-              <div className="flex gap-2">
-                <input value={city} onChange={(e) => setCity(e.target.value)} className="gs-input font-urdu flex-1" placeholder="مثلاً فیصل آباد" />
-                <button onClick={applyManual} disabled={loading} className="gs-btn bg-sky text-white px-4 disabled:opacity-50">تلاش</button>
-              </div>
-              {err && <div className="font-urdu text-danger text-sm mt-1">{err}</div>}
-            </div>
+          {/* status */}
+          <div className="px-4 mt-2 text-center font-urdu text-sm text-muted">
+            {offline ? '📴 آف لائن — آخری محفوظ موسم' : `آخری اپ ڈیٹ: ${hoursAgo === 0 ? 'ابھی' : hoursAgo + ' گھنٹے پہلے'}`}
           </div>
 
           {/* advisories */}
@@ -140,19 +131,30 @@ export default function Weather() {
         </>
       )}
 
-      {!data && !loading && (
-        <div className="px-4 mt-6">
-          <button onClick={detect} className="gs-btn bg-sky text-white w-full">📍 میرا مقام استعمال کریں</button>
-          <div className="mt-3 gs-card p-3">
-            <div className="font-urdu text-sm text-muted mb-1">یا شہر کا نام لکھیں</div>
-            <div className="flex gap-2">
-              <input value={city} onChange={(e) => setCity(e.target.value)} className="gs-input font-urdu flex-1" placeholder="مثلاً فیصل آباد" />
-              <button onClick={applyManual} className="gs-btn bg-sky text-white px-4">تلاش</button>
-            </div>
-            {err && <div className="font-urdu text-danger text-sm mt-1">{err}</div>}
-          </div>
+      {/* location controls */}
+      <div className="px-4 mt-4 space-y-2">
+        <div className="grid grid-cols-2 gap-2">
+          <button onClick={useGps} disabled={loading} className="gs-btn bg-sky text-white text-base disabled:opacity-50">📍 میرا مقام (GPS)</button>
+          <button onClick={() => setShowCities((v) => !v)} className="gs-btn bg-white text-sky border-2 border-sky/20 text-base">🏙️ شہر منتخب کریں</button>
         </div>
-      )}
+        {err && <div className="font-urdu text-danger text-sm text-center">{err}</div>}
+
+        {showCities && (
+          <div className="gs-card p-3">
+            <div className="flex gap-2 mb-2">
+              <input value={city} onChange={(e) => setCity(e.target.value)} className="gs-input font-urdu flex-1" placeholder="شہر کا نام لکھیں" />
+              <button onClick={applyManual} disabled={loading} className="gs-btn bg-sky text-white px-4 disabled:opacity-50">تلاش</button>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {CITIES.map((c) => (
+                <button key={c.place} onClick={() => load(c)} className="px-3 rounded-full font-urdu text-base bg-cream text-ink" style={{ minHeight: 44 }}>
+                  {c.place}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

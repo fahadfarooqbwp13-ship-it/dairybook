@@ -3,6 +3,33 @@
 const KEY = 'dairybook-weather'
 export const FAISALABAD = { lat: 31.418, lon: 73.079, place: 'فیصل آباد' }
 
+// Common Pakistani cities with fixed coords — reliable one-tap location with no
+// geocoding (Open-Meteo's search can't resolve Urdu city names).
+export const CITIES = [
+  { place: 'فیصل آباد', lat: 31.418, lon: 73.079 },
+  { place: 'لاہور', lat: 31.52, lon: 74.358 },
+  { place: 'کراچی', lat: 24.861, lon: 67.01 },
+  { place: 'اسلام آباد', lat: 33.684, lon: 73.048 },
+  { place: 'راولپنڈی', lat: 33.626, lon: 73.071 },
+  { place: 'ملتان', lat: 30.196, lon: 71.472 },
+  { place: 'گوجرانوالہ', lat: 32.161, lon: 74.19 },
+  { place: 'سرگودھا', lat: 32.083, lon: 72.671 },
+  { place: 'سیالکوٹ', lat: 32.493, lon: 74.531 },
+  { place: 'بہاولپور', lat: 29.397, lon: 71.683 },
+  { place: 'ساہیوال', lat: 30.666, lon: 73.106 },
+  { place: 'شیخوپورہ', lat: 31.713, lon: 73.985 },
+  { place: 'جھنگ', lat: 31.27, lon: 72.316 },
+  { place: 'قصور', lat: 31.116, lon: 74.45 },
+  { place: 'پشاور', lat: 34.008, lon: 71.578 },
+  { place: 'حیدرآباد', lat: 25.397, lon: 68.374 },
+  { place: 'رحیم یار خان', lat: 28.42, lon: 70.296 },
+  { place: 'ڈی جی خان', lat: 30.058, lon: 70.634 },
+]
+export const findCity = (name) => {
+  const q = (name || '').trim().toLowerCase()
+  return CITIES.find((c) => c.place.toLowerCase().includes(q) || q.includes(c.place.toLowerCase()))
+}
+
 const WMO = [
   { codes: [0], emoji: '☀️', ur: 'صاف' },
   { codes: [1, 2, 3], emoji: '⛅', ur: 'جزوی بادل' },

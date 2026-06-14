@@ -8,7 +8,7 @@ export default function PageHeader({ title, color = 'bg-primary', action }) {
   // in RTL "back" points right; in LTR it points left
   const chevron = lang === 'ur' ? '›' : '‹'
   return (
-    <header className={`${color} text-white sticky top-0 z-20 shadow`}>
+    <header className={`${color} text-white sticky top-0 z-20 shadow`} style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       <div className="flex items-center gap-2 px-3 py-3">
         <button
           onClick={() => nav(-1)}

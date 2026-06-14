@@ -7,7 +7,7 @@ const ITEMS = [
   { to: '/', icon: '🏠', label: { ur: 'ہوم', en: 'Home' }, end: true },
   { to: '/animals', icon: '🐄', label: { ur: 'جانور', en: 'Animals' } },
   { to: '/milk', icon: '🥛', label: { ur: 'دودھ', en: 'Milk' } },
-  { to: '/buyers', icon: '💰', label: { ur: 'مالیہ', en: 'Money' } },
+  { to: '/money', icon: '💰', label: { ur: 'مالیہ', en: 'Money' } },
 ]
 
 const MORE = [
@@ -30,7 +30,7 @@ export default function BottomNav() {
     <>
       {sheet && (
         <div className="absolute inset-0 z-40 bg-black/50 flex items-end" onClick={() => setSheet(false)}>
-          <div className="bg-surface rounded-t-3xl w-full p-4 pb-6" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-surface rounded-t-3xl w-full p-4" style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }} onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
               <div className="font-urdu text-xl font-bold">مزید</div>
               <button onClick={() => setSheet(false)} className="gs-touch text-3xl text-muted flex items-center justify-center" style={{ width: 40, height: 40 }}>×</button>
@@ -51,8 +51,8 @@ export default function BottomNav() {
         </div>
       )}
 
-      <nav className="shrink-0 bg-surface border-t border-black/5 shadow-[0_-1px_4px_rgba(0,0,0,0.06)]" style={{ minHeight: 65 }}>
-        <div className="grid grid-cols-5 h-full">
+      <nav className="shrink-0 bg-surface border-t border-black/5 shadow-[0_-1px_4px_rgba(0,0,0,0.06)]" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="grid grid-cols-5" style={{ minHeight: 65 }}>
           {ITEMS.map((it) => (
             <NavLink
               key={it.to}

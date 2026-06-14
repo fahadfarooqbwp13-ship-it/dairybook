@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '../../store/useStore.js'
 import { useToast } from '../../store/useToast.js'
 import { useT } from '../../i18n/useT.js'
@@ -7,6 +7,8 @@ import * as sel from '../../store/selectors.js'
 import { animalName, findAnimal } from '../../store/selectors.js'
 import PageHeader from '../../components/PageHeader.jsx'
 import AnimalAvatar from '../../components/AnimalAvatar.jsx'
+import AnimalPicker from '../../components/AnimalPicker.jsx'
+import VoiceButton from '../../components/VoiceButton.jsx'
 import EditBtn from '../../components/EditBtn.jsx'
 
 const HEAT_CYCLE = 21 // days to next heat
@@ -22,7 +24,16 @@ export default function Breeding() {
 
   const females = s.animals.filter((a) => a.sex === 'f' && a.status !== 'sold' && a.status !== 'dead')
   const [tab, setTab] = useState('heat')
+  const [presetMother, setPresetMother] = useState(null)
   const upcoming = sel.upcomingCalvings(s)
+  const expectedMap = {}
+  upcoming.forEach((u) => { expectedMap[u.animal.id] = u.expectedCalving })
+
+  function recordBirthFor(animalId) {
+    setPresetMother(animalId)
+    setTab('birth')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   const TABS = [
     ['heat', '🔴 گرمی'],
@@ -54,7 +65,7 @@ export default function Breeding() {
         <div className="px-4 mt-3">
           {tab === 'heat' && <HeatForm females={females} add={addBreedingEvent} show={show} lang={lang} />}
           {tab === 'mating' && <MatingForm females={females} add={addBreedingEvent} updateAnimal={updateAnimal} show={show} lang={lang} />}
-          {tab === 'birth' && <BirthForm females={females} recordCalving={recordCalving} add={addBreedingEvent} updateAnimal={updateAnimal} show={show} lang={lang} />}
+          {tab === 'birth' && <BirthForm females={females} preset={presetMother} expectedMap={expectedMap} recordCalving={recordCalving} add={addBreedingEvent} updateAnimal={updateAnimal} show={show} lang={lang} />}
         </div>
       )}
 
@@ -70,9 +81,11 @@ export default function Breeding() {
                 <AnimalAvatar animal={u.animal} size={44} />
                 <div className="flex-1 min-w-0">
                   <div className="font-urdu text-base font-bold truncate">{animalName(u.animal)}</div>
-                  <div className="font-urdu text-sm text-muted">متوقع بچہ: {shortDate(u.expectedCalving, lang)}</div>
+                  <div className="font-urdu text-sm text-muted">
+                    متوقع: {shortDate(u.expectedCalving, lang)} · <span className="text-rose font-bold">{u.daysLeft > 0 ? `${u.daysLeft} دن` : 'جلد'}</span>
+                  </div>
                 </div>
-                <span className="num text-base font-bold text-rose shrink-0">{u.daysLeft > 0 ? `${u.daysLeft} دن` : 'جلد'}</span>
+                <button onClick={() => recordBirthFor(u.animal.id)} className="gs-btn bg-rose text-white text-sm px-3 shrink-0" style={{ minHeight: 44 }}>🍼 بچہ درج کریں</button>
               </div>
             ))}
           </div>
@@ -98,16 +111,6 @@ export default function Breeding() {
         </div>
       </div>
     </div>
-  )
-}
-
-function AnimalSelect({ females, value, onChange }) {
-  return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} className="gs-input font-urdu">
-      {females.map((a) => (
-        <option key={a.id} value={a.id}>{a.tag} — {a.name || 'بے نام'} ({a.breed || '—'})</option>
-      ))}
-    </select>
   )
 }
 
@@ -142,7 +145,7 @@ function HeatForm({ females, add, show, lang }) {
   return (
     <div className="gs-card p-4">
       <div className="font-urdu text-xl font-bold text-rose mb-3">🔴 گرمی ریکارڈ کریں</div>
-      <Field label="کون سا جانور؟"><AnimalSelect females={females} value={animalId} onChange={setAnimalId} /></Field>
+      <Field label="کون سا جانور؟"><AnimalPicker animals={females} value={animalId} onChange={setAnimalId} /></Field>
       <Field label="گرمی کی تاریخ"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="gs-input num" /></Field>
       <Result text={result} />
       <button onClick={save} className="gs-btn bg-ok text-white w-full text-xl">✅ محفوظ کریں</button>
@@ -174,7 +177,10 @@ function MatingForm({ females, add, updateAnimal, show, lang }) {
   return (
     <div className="gs-card p-4">
       <div className="font-urdu text-xl font-bold text-rose mb-3">💕 ملاپ ریکارڈ کریں</div>
-      <Field label="کون سا جانور؟"><AnimalSelect females={females} value={animalId} onChange={setAnimalId} /></Field>
+      <Field label="کون سا جانور؟"><AnimalPicker animals={females} value={animalId} onChange={setAnimalId} /></Field>
+      {females.find((a) => a.id === animalId)?.status === 'pregnant' && (
+        <div className="font-urdu text-sm text-accent -mt-2 mb-3">⚠️ یہ جانور پہلے سے حاملہ ہے</div>
+      )}
       <Field label="ملاپ کی تاریخ"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="gs-input num" /></Field>
       <Field label="طریقہ">
         <div className="grid grid-cols-2 gap-2">
@@ -184,7 +190,12 @@ function MatingForm({ females, add, updateAnimal, show, lang }) {
         </div>
       </Field>
       {method === 'ai' && (
-        <Field label="سانڈ کا نام (اختیاری)"><input value={bull} onChange={(e) => setBull(e.target.value)} className="gs-input font-urdu" placeholder="مثلاً نیلی راوی سانڈ" /></Field>
+        <Field label="سانڈ کا نام (اختیاری)">
+          <div className="flex gap-2">
+            <input value={bull} onChange={(e) => setBull(e.target.value)} className="gs-input font-urdu flex-1" placeholder="مثلاً نیلی راوی سانڈ" />
+            <VoiceButton onResult={setBull} lang={lang} />
+          </div>
+        </Field>
       )}
       <Result text={result} />
       <button onClick={save} className="gs-btn bg-ok text-white w-full text-xl">✅ محفوظ کریں</button>
@@ -193,30 +204,39 @@ function MatingForm({ females, add, updateAnimal, show, lang }) {
 }
 
 // ---- Step 3: Birth ----
-function BirthForm({ females, recordCalving, add, updateAnimal, show, lang }) {
-  const [motherId, setMotherId] = useState(females[0]?.id)
+function BirthForm({ females, preset, expectedMap, recordCalving, add, updateAnimal, show, lang }) {
+  const [motherId, setMotherId] = useState(preset || females[0]?.id)
   const [date, setDate] = useState(today())
   const [alive, setAlive] = useState(true)
   const [sex, setSex] = useState('f')
   const [weight, setWeight] = useState('')
+  const [tag, setTag] = useState('')
+  const [name, setName] = useState('')
+
+  useEffect(() => {
+    if (preset) setMotherId(preset)
+  }, [preset])
+
+  const expected = expectedMap[motherId]
 
   function save() {
     if (!motherId) return
     if (alive) {
-      recordCalving(motherId, { date, sex, weight: +weight || 0, outcome: 'live' })
-      show(lang === 'ur' ? 'بچہ مبارک ہو! 🍼' : 'Calf born! 🍼', true)
+      recordCalving(motherId, { date, sex, weight: +weight || 0, outcome: 'live', tag: tag.trim(), name: name.trim() })
+      show('بچہ مبارک ہو! 🍼', true)
     } else {
       add({ animalId: motherId, type: 'calving', date, outcome: 'stillborn' })
       updateAnimal(motherId, { status: 'active' })
-      show(lang === 'ur' ? 'ریکارڈ محفوظ ہو گیا' : 'Recorded', true)
+      show('ریکارڈ محفوظ ہو گیا', true)
     }
-    setWeight('')
+    setWeight(''); setTag(''); setName('')
   }
 
   return (
     <div className="gs-card p-4">
       <div className="font-urdu text-xl font-bold text-rose mb-3">🍼 پیدائش ریکارڈ کریں</div>
-      <Field label="ماں (کون سا جانور؟)"><AnimalSelect females={females} value={motherId} onChange={setMotherId} /></Field>
+      <Field label="ماں (کون سا جانور؟)"><AnimalPicker animals={females} value={motherId} onChange={setMotherId} /></Field>
+      {expected && <div className="font-urdu text-sm text-rose -mt-2 mb-3">🤰 یہ جانور حاملہ ہے — متوقع بچہ: {shortDate(expected, lang)}</div>}
       <Field label="پیدائش کی تاریخ"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="gs-input num" /></Field>
       <Field label="بچہ زندہ ہے؟">
         <div className="grid grid-cols-2 gap-2">
@@ -234,11 +254,20 @@ function BirthForm({ females, recordCalving, add, updateAnimal, show, lang }) {
               ))}
             </div>
           </Field>
-          <Field label="وزن kg (اختیاری)"><input value={weight} onChange={(e) => setWeight(e.target.value)} inputMode="numeric" className="gs-input num" placeholder="مثلاً 30" /></Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="بچے کا ٹیگ نمبر"><input value={tag} onChange={(e) => setTag(e.target.value)} inputMode="numeric" className="gs-input num" placeholder="مثلاً 25" /></Field>
+            <Field label="وزن kg (اختیاری)"><input value={weight} onChange={(e) => setWeight(e.target.value)} inputMode="numeric" className="gs-input num" placeholder="مثلاً 30" /></Field>
+          </div>
+          <Field label="بچے کا نام (اختیاری)">
+            <div className="flex gap-2">
+              <input value={name} onChange={(e) => setName(e.target.value)} className="gs-input font-urdu flex-1" placeholder="مثلاً ننھا" />
+              <VoiceButton onResult={setName} lang={lang} />
+            </div>
+          </Field>
         </>
       )}
       <button onClick={save} className="gs-btn bg-ok text-white w-full text-xl mt-1">✅ محفوظ کریں</button>
-      {alive && <div className="font-urdu text-sm text-muted text-center mt-2">بچہ خود بخود نئے جانور کے طور پر شامل ہو جائے گا</div>}
+      {alive && <div className="font-urdu text-sm text-muted text-center mt-2">بچہ خود بخود ماں سے جُڑا نیا جانور بن جائے گا</div>}
     </div>
   )
 }

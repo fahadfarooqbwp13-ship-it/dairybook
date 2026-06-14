@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../../store/useStore.js'
+import { useEditor } from '../../store/useEditor.js'
 import { useToast } from '../../store/useToast.js'
 import { useT } from '../../i18n/useT.js'
 import { shortDate, today, addDays } from '../../lib/date.js'
@@ -9,6 +10,7 @@ import { VACCINES, vaccineLabel } from '../../lib/domain.js'
 import PageHeader from '../../components/PageHeader.jsx'
 import AnimalAvatar from '../../components/AnimalAvatar.jsx'
 import EditBtn from '../../components/EditBtn.jsx'
+import VoiceButton from '../../components/VoiceButton.jsx'
 
 export default function Health() {
   const { t, lang } = useT()
@@ -37,6 +39,7 @@ export default function Health() {
 // ---- give medicine to an animal + per-animal records ----
 function MedicineGiven({ s, show, lang }) {
   const addMedicineLog = useStore((st) => st.addMedicineLog)
+  const openEditor = useEditor((st) => st.open)
   const animals = s.animals.filter((a) => a.status !== 'sold' && a.status !== 'dead')
   const [animalId, setAnimalId] = useState(animals[0]?.id)
   const [f, setF] = useState({ name: '', dose: '', date: today(), days: '' })
@@ -65,7 +68,10 @@ function MedicineGiven({ s, show, lang }) {
           ))}
         </div>
         <div className="space-y-2 mt-2">
-          <input value={f.name} onChange={set('name')} className="gs-input font-urdu" placeholder="دوائی کا نام" />
+          <div className="flex gap-2">
+            <input value={f.name} onChange={set('name')} className="gs-input font-urdu flex-1" placeholder="دوائی کا نام" />
+            <VoiceButton onResult={(txt) => setF((p) => ({ ...p, name: txt }))} lang={lang} />
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <input value={f.dose} onChange={set('dose')} className="gs-input font-urdu" placeholder="مقدار (مثلاً 10ml)" />
             <input value={f.days} onChange={set('days')} inputMode="numeric" className="gs-input num" placeholder="کتنے دن" />
@@ -84,13 +90,13 @@ function MedicineGiven({ s, show, lang }) {
       ) : (
         <div className="gs-card divide-y divide-black/5">
           {logs.map((m) => (
-            <div key={m.id} className="flex items-center gap-2 px-3 py-2.5">
+            <button key={m.id} onClick={() => openEditor('medicineLogs', m.id)} className="w-full flex items-center gap-2 px-3 py-2.5 text-start active:bg-black/5">
               <div className="flex-1 min-w-0">
                 <div className="font-urdu text-base font-bold truncate">{animalName(findAnimal(s, m.animalId))} — {m.name}</div>
                 <div className="font-urdu text-sm text-muted">{shortDate(m.date, lang)}{m.dose ? ` · ${m.dose}` : ''}{m.days ? ` · ${m.days} دن` : ''}</div>
               </div>
-              <EditBtn collection="medicineLogs" id={m.id} />
-            </div>
+              <span className="text-muted shrink-0">✏️</span>
+            </button>
           ))}
         </div>
       )}

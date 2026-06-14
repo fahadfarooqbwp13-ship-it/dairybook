@@ -49,7 +49,7 @@ export default function RecordEditor() {
 
   return (
     <div className="absolute inset-0 z-50 bg-black/50 flex items-end" onClick={close}>
-      <div className="bg-surface rounded-t-3xl w-full max-h-[85%] overflow-y-auto p-5 pb-7" onClick={(e) => e.stopPropagation()}>
+      <div className="bg-surface rounded-t-3xl w-full max-h-[85%] overflow-y-auto p-5" style={{ paddingBottom: 'calc(1.75rem + env(safe-area-inset-bottom))' }} onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-3">
           <div className="font-urdu text-2xl font-bold text-ink">✏️ {schema.title[lang]} — {t('edit')}</div>
           <button onClick={close} className="gs-touch text-3xl text-muted flex items-center justify-center" style={{ width: 40, height: 40 }}>×</button>

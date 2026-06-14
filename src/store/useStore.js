@@ -27,6 +27,7 @@ export const useStore = create(
       // ---- settings ----
       toggleLang: () => set((s) => ({ lang: s.lang === 'ur' ? 'en' : 'ur' })),
       setFarm: (farmName, ownerName) => set({ farmName, ownerName }),
+      setOnboarded: (v = true) => set({ onboarded: v }),
       resetDemo: () => set({ ...buildSeed(), _undo: null }),
 
       // ---- undo ----
@@ -202,14 +203,14 @@ export const useStore = create(
         return b.id
       },
       // record a calving: register the calf, link it, set mother active
-      recordCalving: (motherId, { date = today(), sex = 'f', weight = 0, outcome = 'live', species } = {}) => {
+      recordCalving: (motherId, { date = today(), sex = 'f', weight = 0, outcome = 'live', species, tag = '', name = '' } = {}) => {
         get()._mark()
         const calfId = uid('a')
         set((s) => {
           const mother = s.animals.find((a) => a.id === motherId)
           const sp = species || mother?.species || 'cow'
           const calf = {
-            id: calfId, tag: '', name: '', species: sp, breed: mother?.breed || '', sex,
+            id: calfId, tag: tag || '', name: name || '', species: sp, breed: mother?.breed || '', sex,
             status: 'calf', dob: date, weight: +weight || 0,
             emoji: speciesInfo(sp).emoji, tint: speciesInfo(sp).tint,
             motherId, createdAt: today(),
@@ -368,7 +369,7 @@ export const useStore = create(
     }),
     {
       name: 'gaesathi-storage',
-      version: 5,
+      version: 6,
       migrate: (persisted, version) => {
         if (!persisted) return undefined
         // v1 (pre health/breeding/trade slices) had inconsistent ids → reseed.
@@ -381,6 +382,7 @@ export const useStore = create(
           recycleBin: persisted.recycleBin || [],
           medicineLogs: persisted.medicineLogs || [],
           customAlerts: persisted.customAlerts || [],
+          onboarded: persisted.onboarded ?? true, // existing users are already set up
         }
       },
       partialize: (s) => {

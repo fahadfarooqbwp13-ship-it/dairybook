@@ -1,6 +1,29 @@
-// Share a PNG via the Web Share API (opens the Android share sheet → WhatsApp,
-// with the image attached). Falls back to a device download when file-sharing
-// isn't supported. TWA/PWA-safe: no window.open / popups.
+// Share a PNG so it actually opens the Android share sheet → WhatsApp.
+// In the wrapped Capacitor app the Android WebView does NOT support the Web
+// Share API for files, so we use the native Share plugin (writing the file to
+// the cache first). In a plain browser PWA we use the Web Share API, falling
+// back to a download.
+import { Capacitor } from '@capacitor/core'
+import { Share } from '@capacitor/share'
+import { Filesystem, Directory } from '@capacitor/filesystem'
+
+const isNative = () => {
+  try {
+    return Capacitor && Capacitor.isNativePlatform && Capacitor.isNativePlatform()
+  } catch {
+    return false
+  }
+}
+
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader()
+    r.onloadend = () => resolve(String(r.result).split(',')[1] || '')
+    r.onerror = reject
+    r.readAsDataURL(blob)
+  })
+}
+
 export function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
@@ -17,17 +40,32 @@ export function downloadBlob(blob, filename) {
 
 // Returns 'shared' | 'cancelled' | 'downloaded'
 export async function shareImage(blob, filename, { title, text } = {}) {
+  const safeName = (filename || 'dairybook.png').replace(/[^a-zA-Z0-9._-]/g, '_')
+
+  // --- Native Capacitor app: write file, then native share (WhatsApp works) ---
+  if (isNative()) {
+    try {
+      const base64 = await blobToBase64(blob)
+      await Filesystem.writeFile({ path: safeName, data: base64, directory: Directory.Cache })
+      const { uri } = await Filesystem.getUri({ path: safeName, directory: Directory.Cache })
+      await Share.share({ title: title || 'DairyBook', text: text || '', files: [uri] })
+      return 'shared'
+    } catch (e) {
+      const msg = (e && e.message) || ''
+      if (/cancel/i.test(msg)) return 'cancelled'
+      // fall through to web/download
+    }
+  }
+
+  // --- Browser PWA: Web Share API with files (files-only first for reliability) ---
   try {
-    const file = new File([blob], filename, { type: 'image/png' })
-    // Prefer files-only payload — combining files+text is rejected on some
-    // Android/Chrome builds and silently fails, which is the "does nothing" bug.
+    const file = new File([blob], safeName, { type: 'image/png' })
     if (navigator.canShare && navigator.canShare({ files: [file] })) {
       try {
         await navigator.share({ files: [file] })
         return 'shared'
       } catch (e) {
         if (e && e.name === 'AbortError') return 'cancelled'
-        // some platforms only share when title/text included — try once more
         try {
           await navigator.share({ files: [file], title, text })
           return 'shared'
@@ -37,8 +75,9 @@ export async function shareImage(blob, filename, { title, text } = {}) {
       }
     }
   } catch {
-    /* fall through to download */
+    /* fall through */
   }
-  downloadBlob(blob, filename)
+
+  downloadBlob(blob, filename || safeName)
   return 'downloaded'
 }

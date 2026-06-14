@@ -6,20 +6,6 @@ import { useConfirm } from '../store/useEditor.js'
 import { useT } from '../i18n/useT.js'
 import PageHeader from '../components/PageHeader.jsx'
 
-const MODULES = [
-  { icon: '🥛', to: '/milk', label: { ur: 'دودھ ریکارڈ', en: 'Milk' } },
-  { icon: '💰', to: '/buyers', label: { ur: 'خریدار اور فروخت', en: 'Buyers & sales' } },
-  { icon: '🧾', to: '/expenses', label: { ur: 'اخراجات', en: 'Expenses' } },
-  { icon: '📊', to: '/reports', label: { ur: 'رپورٹیں', en: 'Reports' } },
-  { icon: '🐄', to: '/animals', label: { ur: 'جانور رجسٹر', en: 'Animals' } },
-  { icon: '🍼', to: '/breeding', label: { ur: 'افزائش نسل', en: 'Breeding' } },
-  { icon: '💊', to: '/health', label: { ur: 'صحت اور ٹیکے', en: 'Health & vaccines' } },
-  { icon: '📅', to: '/calendar', label: { ur: 'کیلنڈر', en: 'Calendar' } },
-  { icon: '🌤️', to: '/weather', label: { ur: 'موسم', en: 'Weather' } },
-  { icon: '🛒', to: '/trade', label: { ur: 'خرید و فروخت', en: 'Buy & sell' } },
-  { icon: '☁️', to: '/backup', label: { ur: 'بیک اپ', en: 'Backup' } },
-]
-
 export default function More() {
   const nav = useNavigate()
   const { t, lang } = useT()
@@ -129,22 +115,6 @@ export default function More() {
         </button>
       </div>
 
-      {/* all modules */}
-      <div className="px-4 mt-5">
-        <h2 className="font-urdu text-xl font-bold text-ink mb-2">تمام ماڈیولز</h2>
-        <div className="space-y-2">
-          {MODULES.map((m, i) => (
-            <button key={i} onClick={() => nav(m.to)} className="gs-card w-full p-4 flex items-center justify-between active:scale-[0.99]">
-              <span className="font-urdu text-lg flex items-center gap-3">
-                <span style={{ fontSize: 26 }}>{m.icon}</span>
-                {m.label[lang]}
-              </span>
-              <span className="text-2xl text-muted">›</span>
-            </button>
-          ))}
-        </div>
-      </div>
-
       {/* danger zone */}
       <div className="px-4 mt-5">
         <h2 className="font-urdu text-xl font-bold text-danger mb-2">⚠️ خطرناک زون</h2>
@@ -165,7 +135,7 @@ export default function More() {
       </div>
 
       <div className="px-4 mt-6 text-center font-urdu text-sm text-muted">
-        ڈیری بک — تمام 11 ماڈیولز
+        ڈیری بک · ترتیبات
       </div>
     </div>
   )

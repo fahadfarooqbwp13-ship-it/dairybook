@@ -374,6 +374,33 @@ export function milkForecast(s, days = 30) {
   return { perDayNow: Math.max(0, slope * (n - 1) + intercept), slope, next30: next, trendUp: slope >= 0 }
 }
 
+// ---------- profitability ----------
+// Farm cost-per-liter and per-animal profit contribution for the current month.
+export function profitOverview(s) {
+  const mk = today().slice(0, 7)
+  const m = monthStats(s, 0)
+  const monthMilk = m.milk // liters produced this month (incl bulk)
+  const monthExpense = monthExpenseTotal(s)
+  const monthDel = s.deliveries.filter((d) => d.date.startsWith(mk))
+  const litersSold = monthDel.reduce((t, d) => t + d.liters, 0)
+  const revenue = monthDel.reduce((t, d) => t + d.amount, 0)
+  const costPerLiter = monthMilk > 0 ? monthExpense / monthMilk : 0
+  const sellRate = litersSold > 0 ? revenue / litersSold : 0
+  const profitPerLiter = sellRate - costPerLiter
+
+  const animals = milkers(s)
+    .map((a) => {
+      const liters = s.milkLogs
+        .filter((x) => x.animalId === a.id && x.date.startsWith(mk))
+        .reduce((t, x) => t + (x.morning || 0) + (x.evening || 0), 0)
+      return { animal: a, liters, revenue: liters * sellRate, cost: liters * costPerLiter, profit: liters * profitPerLiter }
+    })
+    .filter((r) => r.liters > 0)
+    .sort((x, y) => y.profit - x.profit)
+
+  return { monthMilk, monthExpense, revenue, litersSold, costPerLiter, sellRate, profitPerLiter, profit: revenue - monthExpense, animals }
+}
+
 // ---------- calendar (Module 8) ----------
 // returns a map 'YYYY-MM-DD' -> Set of event-type tags for the given month
 export function calendarEvents(s, year, month) {

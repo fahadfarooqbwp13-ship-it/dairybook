@@ -69,11 +69,10 @@ export default function Reports() {
         ))}
       </div>
 
-      {/* jump to any day's full record */}
-      <div className="px-4 mt-2">
-        <button onClick={() => nav('/day')} className="gs-btn bg-white text-grape border-2 border-grape/20 w-full text-base">
-          📅 تاریخ سے دیکھیں — دن کا ریکارڈ
-        </button>
+      {/* quick links */}
+      <div className="px-4 mt-2 grid grid-cols-2 gap-2">
+        <button onClick={() => nav('/day')} className="gs-btn bg-white text-grape border-2 border-grape/20 text-base">📅 دن کا ریکارڈ</button>
+        <button onClick={() => nav('/profit')} className="gs-btn bg-white text-gold border-2 border-gold/30 text-base">📈 منافع</button>
       </div>
 
       {tab !== 'predict' ? (

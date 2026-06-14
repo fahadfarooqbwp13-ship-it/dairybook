@@ -7,17 +7,19 @@ import { rupees, liters } from '../../lib/format.js'
 import { today } from '../../lib/date.js'
 import * as sel from '../../store/selectors.js'
 import PageHeader from '../../components/PageHeader.jsx'
+import VoiceButton from '../../components/VoiceButton.jsx'
 
 const DOT = { overdue: '🔴', soon: '🟡', ok: '🟢' }
 const ORDER = { overdue: 0, soon: 1, ok: 2 }
 
 export default function BuyerList() {
   const nav = useNavigate()
-  const { t } = useT()
+  const { t, lang } = useT()
   const s = useStore()
   const addBuyer = useStore((st) => st.addBuyer)
   const show = useToast((st) => st.show)
   const [adding, setAdding] = useState(false)
+  const [q, setQ] = useState('')
   const [nf, setNf] = useState({ name: '', phone: '', dailyQty: '', rate: '' })
 
   const month = today().slice(0, 7)
@@ -33,6 +35,7 @@ export default function BuyerList() {
       return { b, due, todayL, monthAmt }
     })
     .sort((a, c) => ORDER[a.due.status] - ORDER[c.due.status] || c.due.balance - a.due.balance)
+    .filter(({ b }) => !q.trim() || b.name.toLowerCase().includes(q.trim().toLowerCase()))
 
   const receivable = sel.totalReceivable(s)
 
@@ -85,7 +88,10 @@ export default function BuyerList() {
       {adding && (
         <div className="px-4 mt-3">
           <div className="gs-card p-3 space-y-2">
-            <input className="gs-input font-urdu" placeholder={t('buyers_title')} value={nf.name} onChange={(e) => setNf({ ...nf, name: e.target.value })} />
+            <div className="flex gap-2">
+              <input className="gs-input font-urdu flex-1" placeholder="خریدار کا نام" value={nf.name} onChange={(e) => setNf({ ...nf, name: e.target.value })} />
+              <VoiceButton onResult={(txt) => setNf((p) => ({ ...p, name: txt }))} lang={lang} />
+            </div>
             <input className="gs-input num" inputMode="tel" placeholder={t('buyers_phone')} value={nf.phone} onChange={(e) => setNf({ ...nf, phone: e.target.value })} />
             <div className="grid grid-cols-2 gap-2">
               <input className="gs-input num" inputMode="numeric" placeholder={t('buyers_dailyQty')} value={nf.dailyQty} onChange={(e) => setNf({ ...nf, dailyQty: e.target.value })} />
@@ -93,6 +99,26 @@ export default function BuyerList() {
             </div>
             <button onClick={saveBuyer} className="gs-btn bg-ok text-white w-full">✅ {t('save')}</button>
           </div>
+        </div>
+      )}
+
+      {/* search */}
+      {s.buyers.length > 0 && (
+        <div className="px-4 mt-3 flex gap-2">
+          <input value={q} onChange={(e) => setQ(e.target.value)} className="gs-input font-urdu flex-1" placeholder="🔍 خریدار تلاش کریں" />
+          <VoiceButton onResult={setQ} lang={lang} />
+        </div>
+      )}
+
+      {/* empty state */}
+      {s.buyers.length === 0 && (
+        <div className="px-6 mt-8 text-center">
+          <div className="rounded-full bg-gold/15 mx-auto flex items-center justify-center" style={{ width: 100, height: 100 }}>
+            <span style={{ fontSize: 52 }}>💰</span>
+          </div>
+          <div className="font-urdu text-xl font-bold mt-3">ابھی کوئی خریدار نہیں</div>
+          <div className="font-urdu text-base text-muted mt-1 leading-relaxed">دودھ خریدنے والے کا نام، ریٹ اور مقدار شامل کریں</div>
+          <button onClick={() => setAdding(true)} className="gs-btn bg-gold text-ink mt-4 px-6 mx-auto">➕ پہلا خریدار شامل کریں</button>
         </div>
       )}
 

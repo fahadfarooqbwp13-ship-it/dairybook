@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts'
 import { useStore } from '../../store/useStore.js'
+import { useEditor } from '../../store/useEditor.js'
 import { useToast } from '../../store/useToast.js'
 import { useT } from '../../i18n/useT.js'
 import { rupees } from '../../lib/format.js'
@@ -17,6 +18,7 @@ export default function Expenses() {
   const s = useStore()
   const addExpense = useStore((st) => st.addExpense)
   const paySalary = useStore((st) => st.paySalary)
+  const openEditor = useEditor((st) => st.open)
   const show = useToast((st) => st.show)
 
   const [cat, setCat] = useState(null) // selected category id when adding
@@ -175,15 +177,15 @@ export default function Expenses() {
           {s.expenses.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 20).map((e) => {
             const c = expenseCat(e.category)
             return (
-              <div key={e.id} className="flex items-center gap-3 px-4 py-2.5">
+              <button key={e.id} onClick={() => openEditor('expenses', e.id)} className="w-full flex items-center gap-3 px-4 py-2.5 text-start active:bg-black/5">
                 <span style={{ fontSize: 22 }}>{c.icon}</span>
                 <div className="flex-1 min-w-0">
                   <div className="font-urdu text-base text-ink truncate">{e.note || c[lang]}</div>
                   <div className="font-urdu text-xs text-muted">{shortDate(e.date, lang)} · {c[lang]}</div>
                 </div>
-                <span className="num text-base font-bold text-danger">{rupees(e.amount)}</span>
-                <EditBtn collection="expenses" id={e.id} />
-              </div>
+                <span className="num text-base font-bold text-danger shrink-0">{rupees(e.amount)}</span>
+                <span className="text-muted shrink-0">✏️</span>
+              </button>
             )
           })}
         </div>
