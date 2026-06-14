@@ -16,7 +16,9 @@ body {
   margin: 0;
   background: #fff8f0; /* cream — easy on the eyes in sunlight */
   color: #1a1a1a;
-  font-family: 'Noto Nastaliq Urdu', 'Nunito', system-ui, sans-serif;
+  /* Nunito first so Latin/English uses it; Arabic glyphs fall through to
+     Nastaliq automatically (Nunito has no Arabic). Keeps Urdu in Nastaliq. */
+  font-family: 'Nunito', 'Noto Nastaliq Urdu', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;

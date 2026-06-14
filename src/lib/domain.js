@@ -1,6 +1,21 @@
 // Domain reference data for the farm modules. Urdu labels are inline because
 // the app is Urdu-first; English is provided where a toggle reads it.
 
+// ---- animal species (Module 5) ----
+export const SPECIES = [
+  { id: 'cow', ur: 'گائے', en: 'Cow', emoji: '🐄', tint: '#FDE7C9' },
+  { id: 'buffalo', ur: 'بھینس', en: 'Buffalo', emoji: '🐃', tint: '#E3E0F2' },
+  { id: 'goat', ur: 'بکری', en: 'Goat', emoji: '🐐', tint: '#E8F0D8' },
+  { id: 'sheep', ur: 'بھیڑ', en: 'Sheep', emoji: '🐑', tint: '#F0E8F8' },
+  { id: 'camel', ur: 'اونٹ', en: 'Camel', emoji: '🐪', tint: '#F3E6D0' },
+  { id: 'horse', ur: 'گھوڑا', en: 'Horse', emoji: '🐎', tint: '#E6D8C8' },
+  { id: 'donkey', ur: 'گدھا', en: 'Donkey', emoji: '🫏', tint: '#E2E2E2' },
+  { id: 'hen', ur: 'مرغی', en: 'Hen', emoji: '🐔', tint: '#FDEBD0' },
+  { id: 'other', ur: 'دیگر', en: 'Other', emoji: '🐾', tint: '#E8E8E8' },
+]
+export const speciesInfo = (id) => SPECIES.find((s) => s.id === id) || SPECIES[0]
+export const speciesLabel = (id, lang = 'ur') => speciesInfo(id)[lang]
+
 // ---- expense categories (Module 3) ----
 export const EXPENSE_CATS = [
   { id: 'feed', icon: '🌾', ur: 'چارہ', en: 'Feed', color: '#2E7D32' },

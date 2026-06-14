@@ -7,6 +7,7 @@ import { rupees } from '../../lib/format.js'
 import { shortDate, today } from '../../lib/date.js'
 import * as sel from '../../store/selectors.js'
 import { EXPENSE_CATS, expenseCat, roleLabel } from '../../lib/domain.js'
+import { shareSummary } from '../../lib/summaryImage.js'
 import PageHeader from '../../components/PageHeader.jsx'
 import NumberPad from '../../components/NumberPad.jsx'
 import EditBtn from '../../components/EditBtn.jsx'
@@ -21,6 +22,7 @@ export default function Expenses() {
   const [cat, setCat] = useState(null) // selected category id when adding
   const [amt, setAmt] = useState('')
   const [note, setNote] = useState('')
+  const [sharing, setSharing] = useState(false)
 
   const byCat = sel.expensesByCategory(s)
   const monthTotal = sel.monthExpenseTotal(s)
@@ -35,6 +37,20 @@ export default function Expenses() {
     setCat(null); setAmt(''); setNote('')
   }
 
+  async function onShare() {
+    setSharing(true)
+    const rows = EXPENSE_CATS.filter((c) => byCat[c.id]).map((c) => ({ label: c.ur, value: rupees(byCat[c.id]), color: '#B71C1C' }))
+    const data = {
+      title: 'اخراجات رپورٹ',
+      subtitle: `${s.farmName} · اس ماہ`,
+      rows,
+      highlight: { label: 'کل خرچ', value: rupees(monthTotal), color: '#B71C1C' },
+    }
+    const r = await shareSummary(data, 'expenses.png')
+    setSharing(false)
+    if (r === 'downloaded') show(lang === 'ur' ? 'تصویر محفوظ ہو گئی — واٹس ایپ میں خود بھیجیں' : 'Image saved — send it on WhatsApp', false)
+  }
+
   return (
     <div className="pb-8">
       <PageHeader title={t('exp_title')} color="bg-danger" />
@@ -43,6 +59,12 @@ export default function Expenses() {
       <div className="px-4 mt-3 grid grid-cols-2 gap-3">
         <Card label={t('exp_thisMonth')} value={rupees(monthTotal)} accent="#B71C1C" />
         <Card label={t('exp_thisWeek')} value={rupees(weekTotal)} accent="#E65100" />
+      </div>
+
+      <div className="px-4 mt-3">
+        <button onClick={onShare} disabled={sharing} className="gs-btn bg-[#25D366] text-white w-full text-base disabled:opacity-50">
+          🟢 {sharing ? 'تصویر بن رہی ہے…' : 'اخراجات رپورٹ بھیجیں (تصویر)'}
+        </button>
       </div>
 
       {/* donut */}

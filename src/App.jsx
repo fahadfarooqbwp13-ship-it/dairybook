@@ -2,6 +2,8 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { useEffect } from 'react'
 import Layout from './components/Layout.jsx'
 import { useT } from './i18n/useT.js'
+import { useStore } from './store/useStore.js'
+import { checkDueAlerts } from './lib/notify.js'
 
 import Home from './pages/Home.jsx'
 import MilkHerd from './pages/milk/MilkHerd.jsx'
@@ -33,6 +35,21 @@ export default function App() {
     document.documentElement.dir = dir
     document.documentElement.lang = lang
   }, [dir, lang])
+
+  // fire due custom reminders when the app opens or regains focus
+  useEffect(() => {
+    const run = () => {
+      const st = useStore.getState()
+      checkDueAlerts(st.customAlerts, st.markAlertNotified)
+    }
+    run()
+    document.addEventListener('visibilitychange', run)
+    window.addEventListener('focus', run)
+    return () => {
+      document.removeEventListener('visibilitychange', run)
+      window.removeEventListener('focus', run)
+    }
+  }, [])
 
   return (
     <Routes>

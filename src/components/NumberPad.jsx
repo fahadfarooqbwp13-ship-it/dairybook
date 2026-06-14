@@ -9,9 +9,9 @@ export default function NumberPad({ value, onChange, allowDecimal = true }) {
       if (!allowDecimal || value.includes('.')) return
       return onChange(value === '' ? '0.' : value + '.')
     }
-    // limit to one decimal place, sane length
+    // one decimal place; allow large amounts (up to 9 digits ~ hundreds of millions)
     if (value.includes('.') && value.split('.')[1].length >= 1) return
-    if (value.replace('.', '').length >= 5) return
+    if (value.replace('.', '').length >= 9) return
     const next = value === '0' && k !== '.' ? k : value + k
     onChange(next)
   }

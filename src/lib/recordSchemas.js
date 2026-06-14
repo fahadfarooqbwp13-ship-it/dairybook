@@ -127,8 +127,17 @@ const SCHEMAS = {
       { key: 'notes', label: { ur: 'تفصیل', en: 'Notes' }, type: 'text' },
     ],
   },
+  medicineLogs: {
+    title: { ur: 'دوائی', en: 'Medicine given' },
+    fields: [
+      { key: 'name', label: { ur: 'دوائی کا نام', en: 'Medicine' }, type: 'text' },
+      { key: 'dose', label: { ur: 'مقدار', en: 'Dose' }, type: 'text' },
+      { key: 'date', label: { ur: 'تاریخ', en: 'Date' }, type: 'date' },
+      { key: 'days', label: { ur: 'کتنے دن', en: 'Days' }, type: 'number' },
+    ],
+  },
 }
 
 export const getSchema = (collection) => SCHEMAS[collection] || null
 // numeric keys whose value must be coerced to a number on save
-export const NUMERIC_KEYS = new Set(['morning', 'evening', 'rate', 'dailyQty', 'cycleDays', 'liters', 'amount', 'salary', 'cost', 'qty', 'price', 'weight'])
+export const NUMERIC_KEYS = new Set(['morning', 'evening', 'rate', 'dailyQty', 'cycleDays', 'liters', 'amount', 'salary', 'cost', 'qty', 'price', 'weight', 'days'])

@@ -3,150 +3,93 @@ import { useStore } from '../../store/useStore.js'
 import { useToast } from '../../store/useToast.js'
 import { useT } from '../../i18n/useT.js'
 import { shortDate, today, addDays } from '../../lib/date.js'
-import { GESTATION_DAYS } from '../../lib/domain.js'
 import * as sel from '../../store/selectors.js'
-import { animalName } from '../../store/selectors.js'
+import { animalName, findAnimal } from '../../store/selectors.js'
 import PageHeader from '../../components/PageHeader.jsx'
 import AnimalAvatar from '../../components/AnimalAvatar.jsx'
 import EditBtn from '../../components/EditBtn.jsx'
+
+const HEAT_CYCLE = 21 // days to next heat
+const GESTATION = 280 // days to expected birth
 
 export default function Breeding() {
   const { t, lang } = useT()
   const s = useStore()
   const addBreedingEvent = useStore((st) => st.addBreedingEvent)
   const recordCalving = useStore((st) => st.recordCalving)
+  const updateAnimal = useStore((st) => st.updateAnimal)
   const show = useToast((st) => st.show)
 
   const females = s.animals.filter((a) => a.sex === 'f' && a.status !== 'sold' && a.status !== 'dead')
-  const [animalId, setAnimalId] = useState(females[0]?.id)
-  const [type, setType] = useState('heat')
-  const [method, setMethod] = useState('ai')
-  const [calf, setCalf] = useState(null) // calving form: { motherId, sex }
-
+  const [tab, setTab] = useState('heat')
   const upcoming = sel.upcomingCalvings(s)
-  const expected = type === 'mating' ? addDays(today(), GESTATION_DAYS) : null
 
-  function logEvent() {
-    if (!animalId) return
-    addBreedingEvent({
-      animalId,
-      type,
-      date: today(),
-      method: type === 'mating' ? method : '',
-      aiDetails: type === 'mating' && method === 'ai' ? 'مصنوعی نسل' : '',
-      expectedCalving: type === 'mating' ? expected : '',
-    })
-    if (type === 'mating') useStore.getState().updateAnimal(animalId, { status: 'pregnant' })
-    show(t('saved_ok'), true)
-  }
-
-  function saveCalf(sex, weight) {
-    recordCalving(calf.motherId, { sex, weight })
-    show('بچہ مبارک ہو! 🍼', true)
-    setCalf(null)
-  }
-
-  const recent = s.breedingEvents.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 12)
-  const typeLabel = { heat: t('breed_heat'), mating: t('breed_mating'), pregnancy: t('breed_pregnancy'), calving: t('breed_calving') }
-  const typeIcon = { heat: '🔴', mating: '🟡', pregnancy: '🟣', calving: '🟢' }
+  const TABS = [
+    ['heat', '🔴 گرمی'],
+    ['mating', '💕 ملاپ'],
+    ['birth', '🍼 پیدائش'],
+  ]
 
   return (
     <div className="pb-8">
-      <PageHeader title={t('breed_title')} color="bg-rose" />
+      <PageHeader title="افزائش نسل" color="bg-rose" />
+
+      {/* step tabs */}
+      <div className="px-4 mt-3 grid grid-cols-3 gap-2">
+        {TABS.map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => setTab(k)}
+            className={`rounded-card font-urdu text-lg ${tab === k ? 'bg-rose text-white' : 'bg-white text-muted'}`}
+            style={{ minHeight: 52 }}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {females.length === 0 ? (
+        <div className="px-4 mt-8 text-center font-urdu text-lg text-muted">پہلے مادہ جانور شامل کریں</div>
+      ) : (
+        <div className="px-4 mt-3">
+          {tab === 'heat' && <HeatForm females={females} add={addBreedingEvent} show={show} lang={lang} />}
+          {tab === 'mating' && <MatingForm females={females} add={addBreedingEvent} updateAnimal={updateAnimal} show={show} lang={lang} />}
+          {tab === 'birth' && <BirthForm females={females} recordCalving={recordCalving} add={addBreedingEvent} updateAnimal={updateAnimal} show={show} lang={lang} />}
+        </div>
+      )}
 
       {/* upcoming calvings */}
-      <div className="px-4 mt-3">
-        <h3 className="font-urdu text-lg font-bold mb-1">🍼 {t('breed_upcoming')}</h3>
+      <div className="px-4 mt-5">
+        <h3 className="font-urdu text-lg font-bold mb-1">🍼 آنے والے بچے</h3>
         {upcoming.length === 0 ? (
           <div className="gs-card p-3 font-urdu text-muted">کوئی متوقع بچہ نہیں</div>
         ) : (
           <div className="space-y-2">
             {upcoming.map((u) => (
               <div key={u.id} className="gs-card p-3 flex items-center gap-3">
-                <AnimalAvatar animal={u.animal} size={48} />
-                <div className="flex-1">
-                  <div className="font-urdu text-lg font-bold">{animalName(u.animal)}</div>
-                  <div className="font-urdu text-sm text-muted">{t('breed_expected')}: {shortDate(u.expectedCalving, lang)}</div>
+                <AnimalAvatar animal={u.animal} size={44} />
+                <div className="flex-1 min-w-0">
+                  <div className="font-urdu text-base font-bold truncate">{animalName(u.animal)}</div>
+                  <div className="font-urdu text-sm text-muted">متوقع بچہ: {shortDate(u.expectedCalving, lang)}</div>
                 </div>
-                {u.daysLeft > 3 ? (
-                  <span className="font-urdu text-base bg-rose/15 text-rose rounded-full px-3 py-1 num">{u.daysLeft} دن</span>
-                ) : (
-                  <button onClick={() => setCalf({ motherId: u.animal.id })} className="gs-btn bg-ok text-white text-base px-3" style={{ minHeight: 44 }}>
-                    🍼 {t('breed_recordCalf')}
-                  </button>
-                )}
+                <span className="num text-base font-bold text-rose shrink-0">{u.daysLeft > 0 ? `${u.daysLeft} دن` : 'جلد'}</span>
               </div>
             ))}
           </div>
         )}
       </div>
 
-      {/* record calf form */}
-      {calf && (
-        <div className="px-4 mt-3">
-          <div className="gs-card p-3">
-            <div className="font-urdu text-lg font-bold mb-2">🍼 {t('breed_recordCalf')}</div>
-            <div className="grid grid-cols-2 gap-2">
-              <button onClick={() => saveCalf('f', 0)} className="gs-btn bg-rose text-white">♀ {t('animals_female')}</button>
-              <button onClick={() => saveCalf('m', 0)} className="gs-btn bg-sky text-white">♂ {t('animals_male')}</button>
-            </div>
-            <button onClick={() => setCalf(null)} className="font-urdu text-muted mt-2 w-full">{t('cancel')}</button>
-          </div>
-        </div>
-      )}
-
-      {/* log a breeding event */}
-      <div className="px-4 mt-4">
-        <h3 className="font-urdu text-lg font-bold mb-2">➕ {t('breed_log')}</h3>
-        <div className="gs-card p-3">
-          {/* animal picker */}
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
-            {females.map((a) => (
-              <button key={a.id} onClick={() => setAnimalId(a.id)} className={`shrink-0 flex flex-col items-center gap-1 p-1 rounded-2xl ${animalId === a.id ? 'bg-rose/15 ring-2 ring-rose' : ''}`} style={{ width: 64 }}>
-                <AnimalAvatar animal={a} size={46} showTag={false} />
-                <span className="num text-xs font-bold">{a.tag}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* type */}
-          <div className="grid grid-cols-2 gap-2 mt-2">
-            {[['heat', '🔴 ' + t('breed_heat')], ['mating', '🟡 ' + t('breed_mating')]].map(([k, label]) => (
-              <button key={k} onClick={() => setType(k)} className={`rounded-card font-urdu text-lg border-2 ${type === k ? 'border-rose bg-rose/10' : 'border-black/10 bg-white'}`} style={{ minHeight: 52 }}>
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {type === 'mating' && (
-            <>
-              <div className="grid grid-cols-2 gap-2 mt-2">
-                {[['ai', 'مصنوعی نسل'], ['natural', 'قدرتی']].map(([k, label]) => (
-                  <button key={k} onClick={() => setMethod(k)} className={`rounded-card font-urdu text-base border-2 ${method === k ? 'border-rose bg-rose/10' : 'border-black/10 bg-white'}`} style={{ minHeight: 48 }}>
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <div className="font-urdu text-base text-muted mt-2 text-center">
-                {t('breed_expected')}: <span className="num font-bold text-rose">{shortDate(expected, lang)}</span> ({GESTATION_DAYS} دن)
-              </div>
-            </>
-          )}
-
-          <button onClick={logEvent} className="gs-btn bg-ok text-white mt-3 w-full">✅ {t('save')}</button>
-        </div>
-      </div>
-
-      {/* recent events */}
-      <div className="px-4 mt-4">
-        <h3 className="font-urdu text-lg font-bold mb-1">📋 حالیہ واقعات</h3>
+      {/* recent events (editable) */}
+      <div className="px-4 mt-5">
+        <h3 className="font-urdu text-lg font-bold mb-1">📋 حالیہ ریکارڈ</h3>
         <div className="gs-card divide-y divide-black/5">
-          {recent.map((b) => {
-            const a = sel.findAnimal(s, b.animalId)
+          {s.breedingEvents.slice().sort((a, b) => (a.date < b.date ? 1 : -1)).slice(0, 12).map((b) => {
+            const icon = { heat: '🔴', mating: '💕', pregnancy: '🟣', calving: '🍼' }[b.type] || '•'
+            const label = { heat: 'گرمی', mating: 'ملاپ', pregnancy: 'حمل', calving: 'پیدائش' }[b.type] || b.type
             return (
               <div key={b.id} className="flex items-center gap-2 px-3 py-2">
-                <span style={{ fontSize: 18 }} className="shrink-0">{typeIcon[b.type]}</span>
-                <div className="flex-1 min-w-0 font-urdu text-base truncate">{animalName(a)} — {typeLabel[b.type]}</div>
+                <span style={{ fontSize: 18 }} className="shrink-0">{icon}</span>
+                <span className="font-urdu text-base flex-1 min-w-0 truncate">{animalName(findAnimal(s, b.animalId))} — {label}</span>
                 <span className="font-urdu text-sm text-muted shrink-0">{shortDate(b.date, lang)}</span>
                 <EditBtn collection="breedingEvents" id={b.id} />
               </div>
@@ -154,6 +97,148 @@ export default function Breeding() {
           })}
         </div>
       </div>
+    </div>
+  )
+}
+
+function AnimalSelect({ females, value, onChange }) {
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} className="gs-input font-urdu">
+      {females.map((a) => (
+        <option key={a.id} value={a.id}>{a.tag} — {a.name || 'بے نام'} ({a.breed || '—'})</option>
+      ))}
+    </select>
+  )
+}
+
+function Field({ label, children }) {
+  return (
+    <label className="block mb-3">
+      <span className="font-urdu text-base text-muted block mb-1">{label}</span>
+      {children}
+    </label>
+  )
+}
+
+function Result({ text }) {
+  if (!text) return null
+  return <div className="gs-card p-3 mt-1 mb-3 font-urdu text-lg text-center border-2 border-rose/30 text-rose">{text}</div>
+}
+
+// ---- Step 1: Heat ----
+function HeatForm({ females, add, show, lang }) {
+  const [animalId, setAnimalId] = useState(females[0]?.id)
+  const [date, setDate] = useState(today())
+  const [result, setResult] = useState('')
+
+  function save() {
+    if (!animalId) return
+    add({ animalId, type: 'heat', date })
+    const next = addDays(date, HEAT_CYCLE)
+    setResult(`اگلی گرمی متوقع: ${shortDate(next, lang)}`)
+    show(lang === 'ur' ? 'گرمی ریکارڈ ہو گئی ✅' : 'Heat recorded ✅', true)
+  }
+
+  return (
+    <div className="gs-card p-4">
+      <div className="font-urdu text-xl font-bold text-rose mb-3">🔴 گرمی ریکارڈ کریں</div>
+      <Field label="کون سا جانور؟"><AnimalSelect females={females} value={animalId} onChange={setAnimalId} /></Field>
+      <Field label="گرمی کی تاریخ"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="gs-input num" /></Field>
+      <Result text={result} />
+      <button onClick={save} className="gs-btn bg-ok text-white w-full text-xl">✅ محفوظ کریں</button>
+    </div>
+  )
+}
+
+// ---- Step 2: Mating ----
+function MatingForm({ females, add, updateAnimal, show, lang }) {
+  const [animalId, setAnimalId] = useState(females[0]?.id)
+  const [date, setDate] = useState(today())
+  const [method, setMethod] = useState('ai')
+  const [bull, setBull] = useState('')
+  const [result, setResult] = useState('')
+
+  function save() {
+    if (!animalId) return
+    const expectedCalving = addDays(date, GESTATION)
+    add({
+      animalId, type: 'mating', date,
+      method, aiDetails: method === 'ai' ? (bull.trim() ? `سانڈ: ${bull.trim()}` : 'مصنوعی نسل') : 'قدرتی',
+      expectedCalving,
+    })
+    updateAnimal(animalId, { status: 'pregnant' })
+    setResult(`متوقع بچہ: ${shortDate(expectedCalving, lang)} (${GESTATION} دن)`)
+    show(lang === 'ur' ? 'ملاپ ریکارڈ ہو گیا ✅' : 'Mating recorded ✅', true)
+  }
+
+  return (
+    <div className="gs-card p-4">
+      <div className="font-urdu text-xl font-bold text-rose mb-3">💕 ملاپ ریکارڈ کریں</div>
+      <Field label="کون سا جانور؟"><AnimalSelect females={females} value={animalId} onChange={setAnimalId} /></Field>
+      <Field label="ملاپ کی تاریخ"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="gs-input num" /></Field>
+      <Field label="طریقہ">
+        <div className="grid grid-cols-2 gap-2">
+          {[['ai', 'مصنوعی نسل'], ['natural', 'قدرتی']].map(([k, label]) => (
+            <button key={k} onClick={() => setMethod(k)} className={`rounded-card font-urdu text-lg border-2 ${method === k ? 'border-rose bg-rose/10' : 'border-black/10 bg-white text-muted'}`} style={{ minHeight: 52 }}>{label}</button>
+          ))}
+        </div>
+      </Field>
+      {method === 'ai' && (
+        <Field label="سانڈ کا نام (اختیاری)"><input value={bull} onChange={(e) => setBull(e.target.value)} className="gs-input font-urdu" placeholder="مثلاً نیلی راوی سانڈ" /></Field>
+      )}
+      <Result text={result} />
+      <button onClick={save} className="gs-btn bg-ok text-white w-full text-xl">✅ محفوظ کریں</button>
+    </div>
+  )
+}
+
+// ---- Step 3: Birth ----
+function BirthForm({ females, recordCalving, add, updateAnimal, show, lang }) {
+  const [motherId, setMotherId] = useState(females[0]?.id)
+  const [date, setDate] = useState(today())
+  const [alive, setAlive] = useState(true)
+  const [sex, setSex] = useState('f')
+  const [weight, setWeight] = useState('')
+
+  function save() {
+    if (!motherId) return
+    if (alive) {
+      recordCalving(motherId, { date, sex, weight: +weight || 0, outcome: 'live' })
+      show(lang === 'ur' ? 'بچہ مبارک ہو! 🍼' : 'Calf born! 🍼', true)
+    } else {
+      add({ animalId: motherId, type: 'calving', date, outcome: 'stillborn' })
+      updateAnimal(motherId, { status: 'active' })
+      show(lang === 'ur' ? 'ریکارڈ محفوظ ہو گیا' : 'Recorded', true)
+    }
+    setWeight('')
+  }
+
+  return (
+    <div className="gs-card p-4">
+      <div className="font-urdu text-xl font-bold text-rose mb-3">🍼 پیدائش ریکارڈ کریں</div>
+      <Field label="ماں (کون سا جانور؟)"><AnimalSelect females={females} value={motherId} onChange={setMotherId} /></Field>
+      <Field label="پیدائش کی تاریخ"><input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="gs-input num" /></Field>
+      <Field label="بچہ زندہ ہے؟">
+        <div className="grid grid-cols-2 gap-2">
+          {[[true, '✅ ہاں'], [false, '❌ نہیں']].map(([v, label]) => (
+            <button key={String(v)} onClick={() => setAlive(v)} className={`rounded-card font-urdu text-lg border-2 ${alive === v ? 'border-rose bg-rose/10' : 'border-black/10 bg-white text-muted'}`} style={{ minHeight: 52 }}>{label}</button>
+          ))}
+        </div>
+      </Field>
+      {alive && (
+        <>
+          <Field label="بچے کی جنس">
+            <div className="grid grid-cols-2 gap-2">
+              {[['f', '♀ مادہ'], ['m', '♂ نر']].map(([v, label]) => (
+                <button key={v} onClick={() => setSex(v)} className={`rounded-card font-urdu text-lg border-2 ${sex === v ? 'border-rose bg-rose/10' : 'border-black/10 bg-white text-muted'}`} style={{ minHeight: 52 }}>{label}</button>
+              ))}
+            </div>
+          </Field>
+          <Field label="وزن kg (اختیاری)"><input value={weight} onChange={(e) => setWeight(e.target.value)} inputMode="numeric" className="gs-input num" placeholder="مثلاً 30" /></Field>
+        </>
+      )}
+      <button onClick={save} className="gs-btn bg-ok text-white w-full text-xl mt-1">✅ محفوظ کریں</button>
+      {alive && <div className="font-urdu text-sm text-muted text-center mt-2">بچہ خود بخود نئے جانور کے طور پر شامل ہو جائے گا</div>}
     </div>
   )
 }

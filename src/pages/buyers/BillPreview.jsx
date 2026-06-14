@@ -82,7 +82,7 @@ export default function BillPreview() {
       title: 'بل',
       text: `${buyer.name} — ${bill.monthLabel}\nباقی: ${rupees(bill.balance)}`,
     })
-    if (res === 'downloaded') show(lang === 'ur' ? 'تصویر محفوظ ہو گئی — واٹس ایپ میں بھیجیں' : 'Image saved — send on WhatsApp', false)
+    if (res === 'downloaded') show(lang === 'ur' ? 'تصویر محفوظ ہو گئی — واٹس ایپ میں خود بھیجیں' : 'Image saved — send it on WhatsApp', false)
   }
 
   return (

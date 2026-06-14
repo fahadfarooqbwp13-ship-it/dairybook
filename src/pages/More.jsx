@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store/useStore.js'
 import { useToast } from '../store/useToast.js'
@@ -27,9 +28,19 @@ export default function More() {
   const newFarm = useStore((s) => s.newFarm)
   const clearAnimals = useStore((s) => s.clearAnimals)
   const farmName = useStore((s) => s.farmName)
+  const ownerName = useStore((s) => s.ownerName)
+  const setFarm = useStore((s) => s.setFarm)
   const binCount = useStore((s) => (s.recycleBin || []).length)
   const show = useToast((s) => s.show)
   const confirm = useConfirm((s) => s.confirm)
+  const [editName, setEditName] = useState(null) // farm-name draft when editing
+
+  function saveFarmName() {
+    const name = (editName || '').trim()
+    if (name) setFarm(name, ownerName)
+    setEditName(null)
+    show(t('saved_ok'), false)
+  }
 
   async function doNewFarm() {
     const ok = await confirm({
@@ -69,9 +80,29 @@ export default function More() {
 
       {/* settings */}
       <div className="px-4 mt-4 space-y-2">
-        <div className="gs-card p-4 flex items-center justify-between">
-          <span className="font-urdu text-lg">🏡 {farmName}</span>
-        </div>
+        {editName === null ? (
+          <div className="gs-card p-4 flex items-center justify-between gap-2">
+            <span className="font-urdu text-lg flex-1 min-w-0 truncate">🏡 {farmName}</span>
+            <button onClick={() => setEditName(farmName)} className="gs-touch rounded-full flex items-center justify-center text-primary shrink-0" style={{ width: 44, height: 44 }} aria-label="edit farm name">
+              ✏️
+            </button>
+          </div>
+        ) : (
+          <div className="gs-card p-3">
+            <div className="font-urdu text-base text-muted mb-1">🏡 فارم کا نام</div>
+            <input
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              className="gs-input font-urdu"
+              placeholder="فارم کا نام"
+              autoFocus
+            />
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <button onClick={() => setEditName(null)} className="gs-btn bg-white text-muted border-2 border-black/10">{t('cancel')}</button>
+              <button onClick={saveFarmName} className="gs-btn bg-ok text-white">✅ {t('save')}</button>
+            </div>
+          </div>
+        )}
         <button onClick={toggleLang} className="gs-card w-full p-4 flex items-center justify-between active:scale-[0.99]">
           <span className="font-urdu text-lg">🌐 زبان / Language</span>
           <span className="font-bold text-primary">{lang === 'ur' ? 'اردو' : 'English'}</span>

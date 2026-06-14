@@ -7,6 +7,7 @@ import { today } from '../../lib/date.js'
 import * as sel from '../../store/selectors.js'
 import PageHeader from '../../components/PageHeader.jsx'
 import AnimalAvatar from '../../components/AnimalAvatar.jsx'
+import { speciesLabel } from '../../lib/domain.js'
 import { STATUS, ageText } from './statusBadge.js'
 
 export default function AnimalProfile() {
@@ -38,6 +39,7 @@ export default function AnimalProfile() {
 
   const rows = [
     [t('animals_tag'), a.tag, true],
+    ['قسم', a.speciesName || speciesLabel(a.species, lang), false],
     [t('animals_breed'), a.breed || '—', false],
     [t('animals_sex'), a.sex === 'f' ? t('animals_female') : t('animals_male'), false],
     [t('animals_age'), ageText(a.dob, t), false],
@@ -101,10 +103,11 @@ export default function AnimalProfile() {
         </div>
       )}
 
-      {/* family tree placeholder */}
+      {/* family tree */}
       <div className="px-4 mt-3">
-        <div className="gs-card p-4 font-urdu text-muted text-center">
-          🌳 شجرہ نسب — {t('comingSoon')}
+        <h3 className="font-urdu text-lg font-bold mb-2">🌳 شجرہ نسب</h3>
+        <div className="gs-card p-4">
+          <FamilyTree a={a} s={s} nav={nav} />
         </div>
       </div>
 
@@ -113,6 +116,55 @@ export default function AnimalProfile() {
         <button onClick={() => nav(`/animals/${a.id}/edit`)} className="gs-btn bg-white text-primary border-2 border-primary/20">✏️ {t('edit')}</button>
         <button onClick={onDelete} className="gs-btn bg-white text-danger border-2 border-danger/30">🗑️ {lang === 'ur' ? 'حذف کریں' : 'Delete'}</button>
       </div>
+    </div>
+  )
+}
+
+function TreeBox({ animal, nav, label, self }) {
+  if (!animal) {
+    return (
+      <div className="flex flex-col items-center gap-1" style={{ width: 80 }}>
+        <div className="rounded-full bg-black/10 flex items-center justify-center" style={{ width: 52, height: 52 }}>
+          <span style={{ fontSize: 22 }} className="opacity-60">❔</span>
+        </div>
+        <span className="font-urdu text-xs text-muted">نامعلوم</span>
+        {label && <span className="font-urdu text-[11px] text-muted">{label}</span>}
+      </div>
+    )
+  }
+  return (
+    <button onClick={() => nav(`/animals/${animal.id}`)} className="flex flex-col items-center gap-1 active:scale-95" style={{ width: 80 }}>
+      <div className={self ? 'rounded-full ring-2 ring-primary' : ''}>
+        <AnimalAvatar animal={animal} size={52} showTag={false} />
+      </div>
+      <span className="font-urdu text-xs font-bold text-ink truncate w-full text-center">{animal.name || 'نمبر ' + animal.tag}</span>
+      {label && <span className="font-urdu text-[11px] text-muted">{label}</span>}
+    </button>
+  )
+}
+
+function FamilyTree({ a, s, nav }) {
+  const mother = a.motherId ? sel.findAnimal(s, a.motherId) : null
+  const father = a.fatherId ? sel.findAnimal(s, a.fatherId) : null
+  const children = s.animals.filter((x) => x.motherId === a.id || x.fatherId === a.id)
+  return (
+    <div className="flex flex-col items-center">
+      <div className="flex gap-8 justify-center">
+        <TreeBox animal={father} nav={nav} label="باپ" />
+        <TreeBox animal={mother} nav={nav} label="ماں" />
+      </div>
+      <div className="text-2xl text-muted leading-none my-1">↓</div>
+      <TreeBox animal={a} nav={nav} label="یہ جانور" self />
+      {children.length > 0 ? (
+        <>
+          <div className="text-2xl text-muted leading-none my-1">↓</div>
+          <div className="flex gap-4 flex-wrap justify-center">
+            {children.map((c) => <TreeBox key={c.id} animal={c} nav={nav} label="بچہ" />)}
+          </div>
+        </>
+      ) : (
+        <div className="font-urdu text-sm text-muted mt-2">ابھی کوئی بچہ نہیں</div>
+      )}
     </div>
   )
 }

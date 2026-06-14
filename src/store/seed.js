@@ -298,7 +298,9 @@ export function buildSeed() {
     vaccinations,
     healthEvents,
     medicines,
+    medicineLogs: [],
     transactions,
+    customAlerts: [],
     recycleBin: [],
     lastBackupAt: addDays(t, 0) + 'T06:42:00',
   }
@@ -322,7 +324,9 @@ export function emptyFarm() {
     vaccinations: [],
     healthEvents: [],
     medicines: [],
+    medicineLogs: [],
     transactions: [],
+    customAlerts: [],
     recycleBin: [],
     lastBackupAt: null,
   }

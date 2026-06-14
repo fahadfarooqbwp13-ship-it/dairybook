@@ -7,15 +7,17 @@ import { rupees, liters, num } from '../../lib/format.js'
 import { shortDate } from '../../lib/date.js'
 import * as sel from '../../store/selectors.js'
 import { animalName } from '../../store/selectors.js'
+import { useToast } from '../../store/useToast.js'
+import { shareSummary } from '../../lib/summaryImage.js'
 import PageHeader from '../../components/PageHeader.jsx'
-
-const waLink = (text) => `https://wa.me/?text=${encodeURIComponent(text)}`
 
 export default function Reports() {
   const { t, lang } = useT()
   const nav = useNavigate()
   const s = useStore()
+  const show = useToast((st) => st.show)
   const [tab, setTab] = useState('weekly')
+  const [sharing, setSharing] = useState(false)
 
   const wk = sel.weekStats(s, 0)
   const wkPrev = sel.weekStats(s, 1)
@@ -32,10 +34,22 @@ export default function Reports() {
     { name: lang === 'ur' ? 'اخراجات' : 'Expense', v: cur.expense, color: '#B71C1C' },
   ]
 
-  const shareText =
-    `${s.farmName} — ${tab === 'monthly' ? t('rep_monthly') : t('rep_weekly')} رپورٹ\n` +
-    `${period}\n${t('rep_milk')}: ${num(cur.milk)}L\n${t('rep_revenue')}: ${rupees(cur.revenue)}\n` +
-    `${t('rep_expense')}: ${rupees(cur.expense)}\n${t('rep_profit')}: ${rupees(cur.profit)}`
+  async function onShare() {
+    setSharing(true)
+    const data = {
+      title: `${tab === 'monthly' ? 'ماہانہ' : 'ہفتہ وار'} رپورٹ`,
+      subtitle: `${s.farmName} · ${period}`,
+      rows: [
+        { label: t('rep_milk'), value: `${num(cur.milk)} L` },
+        { label: t('rep_revenue'), value: rupees(cur.revenue), color: '#2E7D32' },
+        { label: t('rep_expense'), value: rupees(cur.expense), color: '#B71C1C' },
+      ],
+      highlight: { label: t('rep_profit'), value: rupees(cur.profit), color: cur.profit >= 0 ? '#2E7D32' : '#B71C1C' },
+    }
+    const r = await shareSummary(data, `report-${tab}.png`)
+    setSharing(false)
+    if (r === 'downloaded') show(lang === 'ur' ? 'تصویر محفوظ ہو گئی — واٹس ایپ میں خود بھیجیں' : 'Image saved — send it on WhatsApp', false)
+  }
 
   return (
     <div className="pb-8">
@@ -112,7 +126,9 @@ export default function Reports() {
             </div>
           )}
 
-          <a href={waLink(shareText)} className="gs-btn bg-[#25D366] text-white w-full">🟢 {t('rep_share')}</a>
+          <button onClick={onShare} disabled={sharing} className="gs-btn bg-[#25D366] text-white w-full disabled:opacity-50">
+            🟢 {sharing ? 'تصویر بن رہی ہے…' : t('rep_share')}
+          </button>
         </div>
       ) : (
         <div className="px-4 mt-3 space-y-3">

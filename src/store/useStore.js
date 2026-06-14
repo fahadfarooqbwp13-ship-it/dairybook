@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { buildSeed, emptyFarm } from './seed.js'
 import { today } from '../lib/date.js'
+import { speciesInfo } from '../lib/domain.js'
 
 const uid = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`
 
@@ -9,7 +10,7 @@ const uid = (p) => `${p}_${Date.now().toString(36)}_${Math.random().toString(36)
 export const COLLECTIONS = [
   'animals', 'milkLogs', 'bulkMilk', 'buyers', 'deliveries', 'payments', 'expenses',
   'employees', 'salaryPayments', 'breedingEvents', 'vaccinations',
-  'healthEvents', 'medicines', 'transactions',
+  'healthEvents', 'medicines', 'medicineLogs', 'transactions',
 ]
 
 // snapshot only the data slices we mutate, for one-step undo
@@ -80,8 +81,8 @@ export const useStore = create(
           status: 'active',
           dob: '',
           weight: 0,
-          emoji: data.species === 'buffalo' ? '🐃' : '🐄',
-          tint: data.species === 'buffalo' ? '#E3E0F2' : '#FDE7C9',
+          emoji: speciesInfo(data.species).emoji,
+          tint: speciesInfo(data.species).tint,
           createdAt: today(),
           ...data,
         }
@@ -98,8 +99,8 @@ export const useStore = create(
                   ...patch,
                   ...(patch.species
                     ? {
-                        emoji: patch.species === 'buffalo' ? '🐃' : '🐄',
-                        tint: patch.species === 'buffalo' ? '#E3E0F2' : '#FDE7C9',
+                        emoji: speciesInfo(patch.species).emoji,
+                        tint: speciesInfo(patch.species).tint,
                       }
                     : {}),
                 }
@@ -210,7 +211,7 @@ export const useStore = create(
           const calf = {
             id: calfId, tag: '', name: '', species: sp, breed: mother?.breed || '', sex,
             status: 'calf', dob: date, weight: +weight || 0,
-            emoji: sp === 'buffalo' ? '🐃' : '🐄', tint: sp === 'buffalo' ? '#E3E0F2' : '#FDE7C9',
+            emoji: speciesInfo(sp).emoji, tint: speciesInfo(sp).tint,
             motherId, createdAt: today(),
           }
           return {
@@ -259,6 +260,20 @@ export const useStore = create(
         get()._mark()
         set((s) => ({ medicines: s.medicines.map((m) => (m.id === id ? { ...m, qty: Math.max(0, m.qty + delta) } : m)) }))
       },
+      // a medicine GIVEN to an animal (treatment log)
+      addMedicineLog: (data) => {
+        get()._mark()
+        const r = { id: uid('ml'), animalId: '', name: '', dose: '', date: today(), days: 0, ...data }
+        set((s) => ({ medicineLogs: [r, ...s.medicineLogs] }))
+        return r.id
+      },
+
+      // ---- custom calendar reminders (Module 8) ----
+      addCustomAlert: (date, text) => set((s) => ({
+        customAlerts: [{ id: uid('al'), date, text: (text || '').trim(), notified: false }, ...s.customAlerts],
+      })),
+      removeCustomAlert: (id) => set((s) => ({ customAlerts: s.customAlerts.filter((a) => a.id !== id) })),
+      markAlertNotified: (id) => set((s) => ({ customAlerts: s.customAlerts.map((a) => (a.id === id ? { ...a, notified: true } : a)) })),
 
       // ---- buy/sell (Module 10) ----
       addPurchase: (data) => {
@@ -269,7 +284,7 @@ export const useStore = create(
           const animal = {
             id: animalId, tag: data.tag || '?', name: data.name || '', species: sp, breed: data.breed || '',
             sex: data.sex || 'f', status: 'active', dob: data.dob || '', weight: +data.weight || 0,
-            emoji: sp === 'buffalo' ? '🐃' : '🐄', tint: sp === 'buffalo' ? '#E3E0F2' : '#FDE7C9', createdAt: today(),
+            emoji: speciesInfo(sp).emoji, tint: speciesInfo(sp).tint, createdAt: today(),
           }
           return {
             animals: [animal, ...s.animals],
@@ -353,13 +368,20 @@ export const useStore = create(
     }),
     {
       name: 'gaesathi-storage',
-      version: 3,
+      version: 5,
       migrate: (persisted, version) => {
         if (!persisted) return undefined
         // v1 (pre health/breeding/trade slices) had inconsistent ids → reseed.
         if (version < 2) return { ...buildSeed(), lang: persisted.lang || 'ur' }
-        // v2 → v3: just add the new slices, keep the user's real data.
-        return { ...buildSeed(), ...persisted, bulkMilk: persisted.bulkMilk || [], recycleBin: persisted.recycleBin || [] }
+        // v2+ → latest: merge in any new slices, keep the user's real data.
+        return {
+          ...buildSeed(),
+          ...persisted,
+          bulkMilk: persisted.bulkMilk || [],
+          recycleBin: persisted.recycleBin || [],
+          medicineLogs: persisted.medicineLogs || [],
+          customAlerts: persisted.customAlerts || [],
+        }
       },
       partialize: (s) => {
         const { _undo, ...rest } = s

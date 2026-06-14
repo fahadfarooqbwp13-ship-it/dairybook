@@ -5,6 +5,7 @@ import { useToast } from '../../store/useToast.js'
 import { useT } from '../../i18n/useT.js'
 import { addDays, today } from '../../lib/date.js'
 import { fileToCompressedDataURL } from '../../lib/image.js'
+import { SPECIES, speciesInfo } from '../../lib/domain.js'
 import PageHeader from '../../components/PageHeader.jsx'
 
 const BREEDS = ['ساہیوال', 'نیلی راوی', 'چولستانی', 'کنڈی', 'فریزین کراس', 'دیسی']
@@ -33,6 +34,7 @@ export default function AnimalEdit() {
     weight: existing?.weight || '',
     ageYears: ageInit,
     photo: existing?.photo || '',
+    speciesName: existing?.speciesName || '',
   })
   const set = (k) => (v) => setF((p) => ({ ...p, [k]: v }))
 
@@ -48,14 +50,15 @@ export default function AnimalEdit() {
     e.target.value = ''
   }
 
-  const emoji = f.species === 'buffalo' ? '🐃' : '🐄'
-  const tint = f.species === 'buffalo' ? '#E3E0F2' : '#FDE7C9'
+  const emoji = speciesInfo(f.species).emoji
+  const tint = speciesInfo(f.species).tint
 
   function save() {
     const data = {
       tag: f.tag.trim() || '?',
       name: f.name.trim(),
       species: f.species,
+      speciesName: f.species === 'other' ? f.speciesName.trim() : '',
       sex: f.sex,
       breed: f.breed.trim(),
       status: f.status,
@@ -117,15 +120,30 @@ export default function AnimalEdit() {
           <input value={f.name} onChange={(e) => set('name')(e.target.value)} className="gs-input font-urdu" placeholder="مثلاً ہیرا" />
         </Field>
 
-        <Field label="قسم">
-          <Toggle
-            value={f.species}
-            onChange={set('species')}
-            options={[
-              { v: 'cow', label: '🐄 گائے' },
-              { v: 'buffalo', label: '🐃 بھینس' },
-            ]}
-          />
+        <Field label="قسم (جانور)">
+          <div className="grid grid-cols-3 gap-2">
+            {SPECIES.map((sp) => (
+              <button
+                key={sp.id}
+                onClick={() => set('species')(sp.id)}
+                className={`rounded-card font-urdu text-base flex flex-col items-center justify-center gap-0.5 py-2 border-2 ${
+                  f.species === sp.id ? 'border-primary bg-primary/10' : 'border-black/5 bg-white text-muted'
+                }`}
+                style={{ minHeight: 64 }}
+              >
+                <span style={{ fontSize: 26 }}>{sp.emoji}</span>
+                <span>{sp.ur}</span>
+              </button>
+            ))}
+          </div>
+          {f.species === 'other' && (
+            <input
+              value={f.speciesName}
+              onChange={(e) => set('speciesName')(e.target.value)}
+              className="gs-input font-urdu mt-2"
+              placeholder="جانور کی قسم لکھیں"
+            />
+          )}
         </Field>
 
         <Field label={t('animals_sex')}>

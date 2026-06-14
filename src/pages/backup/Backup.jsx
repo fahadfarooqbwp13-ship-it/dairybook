@@ -1,15 +1,17 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useStore } from '../../store/useStore.js'
 import { useToast } from '../../store/useToast.js'
 import { useT } from '../../i18n/useT.js'
 import { today } from '../../lib/date.js'
+import { getClientId, setClientId, isConfigured, hasToken, uploadBackup, downloadBackup } from '../../lib/googleDrive.js'
 import PageHeader from '../../components/PageHeader.jsx'
 
 const DATA_KEYS = [
-  'farmName', 'ownerName', 'animals', 'milkLogs', 'buyers', 'deliveries', 'payments',
+  'farmName', 'ownerName', 'animals', 'milkLogs', 'bulkMilk', 'buyers', 'deliveries', 'payments',
   'expenses', 'employees', 'salaryPayments', 'breedingEvents', 'vaccinations',
-  'healthEvents', 'medicines', 'transactions', 'lastBackupAt',
+  'healthEvents', 'medicines', 'medicineLogs', 'transactions', 'customAlerts', 'recycleBin', 'lastBackupAt',
 ]
+const GBACKUP_AT = 'dairybook-gbackup-at'
 
 export default function Backup() {
   const { t, lang } = useT()
@@ -19,6 +21,55 @@ export default function Backup() {
   const show = useToast((st) => st.show)
   const fileRef = useRef(null)
   const [err, setErr] = useState('')
+  // google drive state
+  const [gConfigured, setGConfigured] = useState(isConfigured())
+  const [cid, setCid] = useState(getClientId())
+  const [gBusy, setGBusy] = useState(false)
+  const [gAt, setGAt] = useState(localStorage.getItem(GBACKUP_AT) || '')
+
+  function buildPayload() {
+    const payload = { _meta: { app: 'DairyBook', version: 5, exportedAt: new Date().toISOString() } }
+    DATA_KEYS.forEach((k) => { payload[k] = s[k] })
+    return payload
+  }
+
+  async function driveBackup() {
+    setGBusy(true); setErr('')
+    try {
+      await uploadBackup(JSON.stringify(buildPayload()))
+      const now = new Date().toISOString()
+      localStorage.setItem(GBACKUP_AT, now); setGAt(now)
+      setLastBackup(now)
+      show(lang === 'ur' ? 'گوگل ڈرائیو پر بیک اپ ہو گیا ✅' : 'Backed up to Drive ✅', false)
+    } catch (e) {
+      setErr(e.message === 'no-client-id' ? 'پہلے گوگل Client ID شامل کریں' : 'گوگل بیک اپ ناکام — دوبارہ کوشش کریں')
+    } finally { setGBusy(false) }
+  }
+
+  async function driveRestore() {
+    setGBusy(true); setErr('')
+    try {
+      const data = JSON.parse(await downloadBackup())
+      if (!data.animals) throw new Error('bad')
+      importData(data)
+      show(lang === 'ur' ? 'گوگل ڈرائیو سے واپس آ گیا ✅' : 'Restored from Drive ✅', false)
+    } catch (e) {
+      setErr(e.message === 'no-backup' ? 'ڈرائیو پر کوئی بیک اپ نہیں ملا' : 'واپسی ناکام — دوبارہ کوشش کریں')
+    } finally { setGBusy(false) }
+  }
+
+  // auto-backup every 6h while signed in this session
+  useEffect(() => {
+    if (isConfigured() && hasToken()) {
+      const at = localStorage.getItem(GBACKUP_AT)
+      if (!at || Date.now() - new Date(at) > 6 * 3600 * 1000) {
+        uploadBackup(JSON.stringify(buildPayload()))
+          .then(() => { const now = new Date().toISOString(); localStorage.setItem(GBACKUP_AT, now); setGAt(now) })
+          .catch(() => {})
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const last = s.lastBackupAt ? new Date(s.lastBackupAt) : null
   const hoursAgo = last ? Math.round((Date.now() - last) / 3600000) : null
@@ -29,8 +80,7 @@ export default function Backup() {
       : { color: 'bg-ok', icon: '✅', text: `${t('backup_done')} — ${hoursAgo === 0 ? 'ابھی' : hoursAgo + ' گھنٹے پہلے'}` }
 
   function exportFile() {
-    const payload = { _meta: { app: 'DairyBook', version: 3, exportedAt: new Date().toISOString() } }
-    DATA_KEYS.forEach((k) => { payload[k] = s[k] })
+    const payload = buildPayload()
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -100,13 +150,39 @@ export default function Backup() {
         </div>
       </div>
 
-      {/* google drive note */}
+      {/* google drive backup */}
       <div className="px-4 mt-4">
         <div className="gs-card p-4">
-          <div className="font-urdu text-lg font-bold flex items-center gap-2">☁️ گوگل ڈرائیو</div>
-          <div className="font-urdu text-base text-muted leading-relaxed mt-1">
-            بیک اپ فائل محفوظ کر کے اسے گوگل ڈرائیو میں «DairyBook Backup» فولڈر میں رکھ دیں — آپ کا ڈیٹا محفوظ رہے گا۔ خودکار ڈرائیو سِنک جلد آ رہا ہے۔
-          </div>
+          <div className="font-urdu text-lg font-bold flex items-center gap-2">☁️ گوگل ڈرائیو بیک اپ</div>
+
+          {!gConfigured ? (
+            <div className="mt-2">
+              <div className="font-urdu text-base text-muted leading-relaxed">
+                گوگل بیک اپ کے لیے ایک بار «Google OAuth Client ID» درکار ہے۔ گوگل کلاؤڈ کنسول سے بنا کر یہاں پیسٹ کریں:
+              </div>
+              <input value={cid} onChange={(e) => setCid(e.target.value)} className="gs-input num mt-2 text-sm" placeholder="xxxx.apps.googleusercontent.com" />
+              <button onClick={() => { setClientId(cid); setGConfigured(isConfigured()) }} className="gs-btn bg-primary text-white w-full mt-2">محفوظ کریں</button>
+              <div className="font-urdu text-xs text-muted mt-2 leading-relaxed">
+                console.cloud.google.com → APIs &amp; Services → Credentials → Create OAuth Client ID (Web) → Authorized JavaScript origin میں ایپ کا پتہ ڈالیں، Drive API آن کریں۔
+              </div>
+            </div>
+          ) : (
+            <>
+              {gAt && (
+                <div className="font-urdu text-sm text-ok mt-1">
+                  ✅ آخری ڈرائیو بیک اپ: {(() => { const h = Math.round((Date.now() - new Date(gAt)) / 3600000); return h <= 0 ? 'ابھی' : `${h} گھنٹے پہلے` })()}
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-2 mt-2">
+                <button onClick={driveBackup} disabled={gBusy} className="gs-btn bg-primary text-white disabled:opacity-50">{gBusy ? '…' : '☁️ ابھی بیک اپ'}</button>
+                <button onClick={driveRestore} disabled={gBusy} className="gs-btn bg-white text-primary border-2 border-primary/20 disabled:opacity-50">📥 ڈرائیو سے واپس</button>
+              </div>
+              <div className="flex items-center justify-between mt-2">
+                <span className="font-urdu text-xs text-muted">خودکار بیک اپ ہر 6 گھنٹے (سائن اِن پر)</span>
+                <button onClick={() => setGConfigured(false)} className="font-urdu text-xs text-sky">Client ID تبدیل کریں</button>
+              </div>
+            </>
+          )}
         </div>
       </div>
 

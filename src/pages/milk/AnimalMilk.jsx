@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, ResponsiveContainer, ReferenceLine, Tooltip, Cell,
@@ -10,12 +11,16 @@ import * as sel from '../../store/selectors.js'
 import PageHeader from '../../components/PageHeader.jsx'
 import AnimalAvatar from '../../components/AnimalAvatar.jsx'
 import EditBtn from '../../components/EditBtn.jsx'
+import { useToast } from '../../store/useToast.js'
+import { shareSummary } from '../../lib/summaryImage.js'
 
 export default function AnimalMilk() {
   const { id } = useParams()
   const nav = useNavigate()
   const { t, lang } = useT()
   const s = useStore()
+  const show = useToast((st) => st.show)
+  const [sharing, setSharing] = useState(false)
   const animal = s.animals.find((a) => a.id === id)
   if (!animal) return <Missing nav={nav} t={t} />
 
@@ -28,6 +33,23 @@ export default function AnimalMilk() {
   const trend = stats.trendPct
   const arrow = trend > 3 ? '↑' : trend < -3 ? '↓' : '→'
   const arrowColor = trend > 3 ? 'text-ok' : trend < -3 ? 'text-danger' : 'text-muted'
+
+  async function onShare() {
+    setSharing(true)
+    const data = {
+      title: animal.name || `نمبر ${animal.tag}`,
+      subtitle: `دودھ کا خلاصہ · ${animal.breed || ''}`,
+      rows: [
+        { label: t('today'), value: `${lnum(stats.todayL)} L` },
+        { label: t('milk_avg'), value: `${lnum(stats.avg)} L` },
+        { label: t('milk_peak'), value: `${lnum(peakL)} L` },
+      ],
+      highlight: { label: t('milk_monthTotal'), value: `${lnum(stats.monthTotal)} L`, color: '#0277BD' },
+    }
+    const r = await shareSummary(data, `milk-${animal.tag}.png`)
+    setSharing(false)
+    if (r === 'downloaded') show(lang === 'ur' ? 'تصویر محفوظ ہو گئی — واٹس ایپ میں خود بھیجیں' : 'Image saved — send it on WhatsApp', false)
+  }
 
   return (
     <div className="pb-8">
@@ -121,6 +143,12 @@ export default function AnimalMilk() {
       </div>
 
       <div className="px-4 mt-4">
+        <button onClick={onShare} disabled={sharing} className="gs-btn bg-[#25D366] text-white w-full disabled:opacity-50">
+          🟢 {sharing ? 'تصویر بن رہی ہے…' : 'دودھ کا خلاصہ بھیجیں'}
+        </button>
+      </div>
+
+      <div className="px-4 mt-3">
         <Link to={`/animals/${animal.id}`} className="gs-btn bg-white text-primary border-2 border-primary/20">
           🐄 جانور کی تفصیل دیکھیں
         </Link>
